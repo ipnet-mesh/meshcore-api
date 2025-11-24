@@ -36,14 +36,21 @@ class RealMeshCore(MeshCoreInterface):
             )
 
             # Subscribe to all event types
+            logger.info(f"Subscribing to {len(list(EventType))} event types")
             for event_type in EventType:
+                logger.debug(f"Subscribing to {event_type.name}")
                 self.meshcore.subscribe(event_type, self._handle_meshcore_event)
+
+            # Start auto message fetching if available
+            if hasattr(self.meshcore, 'start_auto_message_fetching'):
+                logger.info("Starting auto message fetching")
+                self.meshcore.start_auto_message_fetching()
 
             logger.info("Connected to MeshCore device")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to connect to MeshCore: {e}")
+            logger.error(f"Failed to connect to MeshCore: {e}", exc_info=True)
             return False
 
     async def disconnect(self) -> None:
@@ -69,7 +76,7 @@ class RealMeshCore(MeshCoreInterface):
     async def subscribe_to_events(self, handler: Callable[[Event], None]) -> None:
         """Subscribe to all MeshCore events."""
         self._event_handlers.append(handler)
-        logger.debug(f"Added event handler: {handler.__name__}")
+        logger.info(f"Added event handler: {handler.__name__} (total handlers: {len(self._event_handlers)})")
 
     async def _handle_meshcore_event(self, event) -> None:
         """
@@ -79,21 +86,29 @@ class RealMeshCore(MeshCoreInterface):
             event: meshcore_py Event object
         """
         try:
+            logger.debug(f"Received MeshCore event: {event}")
+
             # Convert meshcore_py event to our Event format
+            event_type = event.type.name if hasattr(event.type, 'name') else str(event.type)
+            event_payload = event.payload if hasattr(event, 'payload') else {}
+
+            logger.info(f"Processing event: {event_type}")
+
             our_event = Event(
-                type=event.type.name if hasattr(event.type, 'name') else str(event.type),
-                payload=event.payload if hasattr(event, 'payload') else {}
+                type=event_type,
+                payload=event_payload
             )
 
             # Dispatch to all registered handlers
+            logger.debug(f"Dispatching to {len(self._event_handlers)} handlers")
             for handler in self._event_handlers:
                 try:
                     await handler(our_event)
                 except Exception as e:
-                    logger.error(f"Error in event handler {handler.__name__}: {e}")
+                    logger.error(f"Error in event handler {handler.__name__}: {e}", exc_info=True)
 
         except Exception as e:
-            logger.error(f"Error processing MeshCore event: {e}")
+            logger.error(f"Error processing MeshCore event: {e}", exc_info=True)
 
     async def send_message(self, destination: str, text: str, text_type: str = "plain") -> Event:
         """Send a direct message to a node."""
