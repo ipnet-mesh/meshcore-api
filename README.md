@@ -68,6 +68,39 @@ MESHCORE_LOG_LEVEL=INFO
 
 See full configuration options in documentation.
 
+## Querying the Database
+
+View captured data with the query tool:
+
+```bash
+# Full report (all tables and statistics)
+python -m meshcore_sidekick.query
+
+# Summary statistics only
+python -m meshcore_sidekick.query --summary
+
+# Recent messages (last 20)
+python -m meshcore_sidekick.query --messages 20
+
+# Discovered nodes
+python -m meshcore_sidekick.query --nodes 10
+
+# Recent advertisements
+python -m meshcore_sidekick.query --advertisements 10
+
+# Telemetry data
+python -m meshcore_sidekick.query --telemetry 5
+
+# Trace paths
+python -m meshcore_sidekick.query --traces 5
+
+# Activity in last 6 hours
+python -m meshcore_sidekick.query --activity 6
+
+# Custom database location
+python -m meshcore_sidekick.query --db-path /data/meshcore.db
+```
+
 ## API Documentation
 
 Once running, access interactive API docs at:
