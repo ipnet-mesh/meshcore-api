@@ -66,13 +66,19 @@ class EventHandler:
                 "BINARY_RESPONSE": self._handle_binary_response,
                 "CONTROL_DATA": self._handle_control_data,
                 "RAW_DATA": self._handle_raw_data,
+                # Internal meshcore_py events (informational only)
+                "MESSAGES_WAITING": None,  # Logged but not persisted separately
+                "RX_LOG_DATA": None,  # Logged but not persisted separately
             }
 
             handler = handler_map.get(event.type)
             if handler:
                 await handler(event)
+            elif handler is None and event.type in handler_map:
+                # Event type is known but no specific handler (informational)
+                logger.debug(f"Informational event (not persisted separately): {event.type}")
             else:
-                logger.debug(f"No specific handler for event type: {event.type}")
+                logger.info(f"Unknown event type (logged to events_log): {event.type}")
 
         except Exception as e:
             logger.error(f"Error handling event {event.type}: {e}", exc_info=True)

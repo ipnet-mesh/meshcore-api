@@ -44,7 +44,7 @@ class RealMeshCore(MeshCoreInterface):
             # Start auto message fetching if available
             if hasattr(self.meshcore, 'start_auto_message_fetching'):
                 logger.info("Starting auto message fetching")
-                self.meshcore.start_auto_message_fetching()
+                await self.meshcore.start_auto_message_fetching()
 
             logger.info("Connected to MeshCore device")
             return True
