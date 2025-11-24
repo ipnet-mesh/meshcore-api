@@ -1,0 +1,49 @@
+[tool.poetry]
+name = "meshcore-sidekick"
+version = "1.0.0"
+description = "MeshCore companion application for event collection and REST API"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "meshcore_sidekick", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+meshcore = "^2.2.1"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.31.0"}
+sqlalchemy = "^2.0.0"
+alembic = "^1.13.0"
+pydantic = "^2.9.0"
+prometheus-client = "^0.21.0"
+prometheus-fastapi-instrumentator = "^7.0.0"
+python-multipart = "^0.0.12"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+black = "^24.10.0"
+ruff = "^0.7.0"
+mypy = "^1.13.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
