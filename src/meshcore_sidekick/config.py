@@ -23,7 +23,7 @@ class Config:
     mock_center_lon: float = -122.6765
 
     # === Database ===
-    db_path: str = "./meshcore.db"
+    db_path: str = "./data/meshcore.db"
     retention_days: int = 30
     cleanup_interval_hours: int = 1
 

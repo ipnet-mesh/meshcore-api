@@ -329,8 +329,8 @@ Examples:
     parser.add_argument(
         "--db-path",
         type=str,
-        default="./meshcore.db",
-        help="Path to database file (default: ./meshcore.db)"
+        default="./data/meshcore.db",
+        help="Path to database file (default: ./data/meshcore.db)"
     )
     parser.add_argument(
         "--summary",

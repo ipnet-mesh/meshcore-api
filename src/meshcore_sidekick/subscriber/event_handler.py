@@ -1,5 +1,5 @@
 """Event handler for processing and persisting MeshCore events."""
-
+import base64
 import json
 import logging
 from datetime import datetime
@@ -90,11 +90,18 @@ class EventHandler:
             with session_scope() as session:
                 event_log = EventLog(
                     event_type=event.type,
-                    event_data=json.dumps(event.payload),
+                    event_data=json.dumps(event.payload, default=self._json_default),
                 )
                 session.add(event_log)
         except Exception as e:
             logger.error(f"Failed to log event: {e}")
+
+    @staticmethod
+    def _json_default(obj):
+        """JSON serializer for non-serializable types."""
+        if isinstance(obj, (bytes, bytearray, memoryview)):
+            return base64.b64encode(bytes(obj)).decode("ascii")
+        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
     async def _upsert_node(self, public_key: str, **kwargs) -> Optional[Node]:
         """
@@ -118,6 +125,9 @@ class EventHandler:
                     # Update existing node
                     for key, value in kwargs.items():
                         if value is not None:
+                            if key == "name" and getattr(node, key):
+                                # Keep existing name if we already have one
+                                continue
                             setattr(node, key, value)
                     node.last_seen = datetime.utcnow()
                 else:
@@ -147,11 +157,23 @@ class EventHandler:
             logger.warning("Advertisement missing public_key")
             return
 
+        normalized_key = normalize_public_key(public_key)
+        name = (
+            payload.get("name")
+            or payload.get("node_name")
+            or payload.get("device_name")
+            or payload.get("alias")
+        )
+        if not name:
+            name = normalized_key[:8]
+
+        adv_type = payload.get("adv_type") or payload.get("type")
+
         # Upsert node
         await self._upsert_node(
             public_key,
-            node_type=payload.get("adv_type"),
-            name=payload.get("name"),
+            node_type=adv_type,
+            name=name,
             latitude=payload.get("latitude"),
             longitude=payload.get("longitude"),
         )
@@ -159,9 +181,9 @@ class EventHandler:
         # Store advertisement
         with session_scope() as session:
             advert = Advertisement(
-                public_key=normalize_public_key(public_key),
-                adv_type=payload.get("adv_type"),
-                name=payload.get("name"),
+                public_key=normalized_key,
+                adv_type=adv_type,
+                name=name,
                 latitude=payload.get("latitude"),
                 longitude=payload.get("longitude"),
                 flags=payload.get("flags"),
@@ -241,13 +263,31 @@ class EventHandler:
         """Handle TRACE_DATA event."""
         payload = event.payload
 
+        initiator_tag = payload.get("initiator_tag") or payload.get("tag")
+        if initiator_tag is None:
+            logger.warning(f"Skipping TRACE_DATA with missing initiator_tag: {payload}")
+            return
+
+        destination_key = payload.get("destination_public_key")
+        normalized_destination = normalize_public_key(destination_key) if destination_key else None
+
+        path_hashes = payload.get("path_hashes")
+        if path_hashes is None and "path" in payload:
+            path_hashes = [hop.get("hash") for hop in payload.get("path", []) if hop.get("hash") is not None]
+
+        snr_values = payload.get("snr_values")
+        if snr_values is None and "path" in payload:
+            snr_values = [hop.get("snr") for hop in payload.get("path", []) if hop.get("snr") is not None]
+
+        hop_count = payload.get("hop_count") or (len(path_hashes) if path_hashes is not None else None)
+
         with session_scope() as session:
             trace = TracePath(
-                initiator_tag=payload.get("initiator_tag"),
-                destination_public_key=payload.get("destination_public_key"),
-                path_hashes=json.dumps(payload.get("path_hashes", [])),
-                snr_values=json.dumps(payload.get("snr_values", [])),
-                hop_count=payload.get("hop_count"),
+                initiator_tag=initiator_tag,
+                destination_public_key=normalized_destination,
+                path_hashes=json.dumps(path_hashes or []),
+                snr_values=json.dumps(snr_values or []),
+                hop_count=hop_count,
             )
             session.add(trace)
 
@@ -259,9 +299,11 @@ class EventHandler:
         if not node_key:
             return
 
+        normalized_key = normalize_public_key(node_key)
+
         with session_scope() as session:
             telemetry = Telemetry(
-                node_public_key=node_key,
+                node_public_key=normalized_key,
                 lpp_data=payload.get("lpp_data"),
                 parsed_data=json.dumps(payload.get("parsed_data")) if payload.get("parsed_data") else None,
             )
