@@ -68,6 +68,7 @@ class EventHandler:
                 "RAW_DATA": self._handle_raw_data,
                 # Internal meshcore_py events (informational only)
                 "MESSAGES_WAITING": None,  # Logged but not persisted separately
+                "NO_MORE_MSGS": None,  # Logged but not persisted separately
                 "RX_LOG_DATA": None,  # Logged but not persisted separately
             }
 
