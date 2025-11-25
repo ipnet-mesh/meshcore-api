@@ -124,7 +124,7 @@ class DatabaseQuery:
                 name_display = name or "Unknown"
                 type_display = node_type_name(node_type)
                 print(f"\n  Node: {name_display}")
-                print(f"    Public Key: {prefix}...")
+                print(f"    Public Key: {public_key}")
                 print(f"    Type: {type_display}")
                 print(f"    First Seen: {first_seen}")
                 print(f"    Last Seen: {last_seen}")
@@ -207,7 +207,7 @@ class DatabaseQuery:
         if results:
             for idx, (pub_key, adv_type, name, flags, recv) in enumerate(results, 1):
                 print(f"\n  Advertisement #{idx}")
-                print(f"    Public Key: {pub_key[:16]}...")
+                print(f"    Public Key: {pub_key}")
                 print(f"    Type: {adv_type or 'unknown'}")
                 print(f"    Name: {name or 'Unknown'}")
                 if flags is not None:
@@ -232,7 +232,7 @@ class DatabaseQuery:
         if results:
             for idx, (node_key, parsed, recv) in enumerate(results, 1):
                 print(f"\n  Telemetry #{idx}")
-                print(f"    Node: {node_key}...")
+                print(f"    Node: {node_key}")
                 print(f"    Received: {recv}")
                 if parsed:
                     try:
@@ -264,7 +264,7 @@ class DatabaseQuery:
                 print(f"\n  Trace Path #{idx}")
                 print(f"    Initiator Tag: 0x{tag:08x}")
                 if dest:
-                    print(f"    Destination: {dest[:16]}...")
+                    print(f"    Destination: {dest}")
                 print(f"    Hop Count: {hops or 'N/A'}")
                 print(f"    Completed: {completed}")
                 if hashes:
