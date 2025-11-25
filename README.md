@@ -150,6 +150,33 @@ curl http://localhost:8000/api/v1/tags/keys
 curl -X DELETE http://localhost:8000/api/v1/nodes/{public_key}/tags/battery_count
 ```
 
+### Querying Nodes by Tags
+
+Find nodes matching specific tag criteria:
+
+```bash
+# Query all gateway nodes
+curl "http://localhost:8000/api/v1/nodes/by-tag?tag_key=is_gateway&tag_value=true"
+
+# Query all nodes from specific manufacturer
+curl "http://localhost:8000/api/v1/nodes/by-tag?tag_key=manufacturer&tag_value=Meshtastic"
+
+# Query all nodes with a specific hop count
+curl "http://localhost:8000/api/v1/nodes/by-tag?tag_key=hop_count&tag_value=3"
+
+# Query all nodes that have a location tag (any value)
+curl "http://localhost:8000/api/v1/nodes/by-tag?tag_key=location&tag_value=EXISTS"
+
+# With pagination and sorting
+curl "http://localhost:8000/api/v1/nodes/by-tag?tag_key=is_gateway&tag_value=true&limit=50&offset=0&sort_by=last_seen&order=desc"
+```
+
+The endpoint automatically detects value types:
+- `true`/`false` (case-insensitive) → queries boolean tags
+- Numeric values → queries number tags
+- Other strings → queries string tags
+- `EXISTS` → finds any node with that tag key
+
 ### Viewing Tags in Query Tool
 
 Tags are automatically displayed when viewing nodes:

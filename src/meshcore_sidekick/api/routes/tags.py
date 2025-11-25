@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
 from ..schemas import (
+    NodeResponse, NodeListResponse,
     NodeTagResponse, NodeTagListResponse, TagValueRequest, TagValueUpdateRequest,
     BulkTagUpdateRequest, BulkTagUpdateResponse, TagKeysResponse,
     CoordinateValue,
@@ -487,4 +488,104 @@ async def get_tag_keys(
     return TagKeysResponse(
         keys=key_list,
         total=len(key_list)
+    )
+
+
+# Helper functions for querying nodes by tags
+
+def _apply_tag_value_filter(query, tag_value: str):
+    """Apply tag value filter with smart type coercion."""
+    # Try boolean
+    if tag_value.lower() in ('true', 'false'):
+        bool_value = tag_value.lower() == 'true'
+        return query.filter(
+            NodeTag.value_type == 'boolean',
+            NodeTag.value_boolean == bool_value
+        )
+
+    # Try number
+    try:
+        num_value = float(tag_value)
+        return query.filter(
+            NodeTag.value_type == 'number',
+            NodeTag.value_number == num_value
+        )
+    except ValueError:
+        pass
+
+    # Default to string
+    return query.filter(
+        NodeTag.value_type == 'string',
+        NodeTag.value_string == tag_value
+    )
+
+
+def _apply_node_sorting(query, sort_by: str, order: str):
+    """Apply sorting to node query."""
+    from sqlalchemy import desc, asc
+
+    sort_field = Node.last_seen
+    if sort_by == "first_seen":
+        sort_field = Node.first_seen
+    elif sort_by == "public_key":
+        sort_field = Node.public_key
+
+    if order == "desc":
+        return query.order_by(desc(sort_field))
+    return query.order_by(asc(sort_field))
+
+
+@router.get(
+    "/nodes/by-tag",
+    response_model=NodeListResponse,
+    summary="Query nodes by tag",
+    description="Get nodes that have a specific tag key/value pair",
+)
+async def query_nodes_by_tag(
+    tag_key: str = Query(..., description="Tag key to filter by"),
+    tag_value: str = Query(..., description="Tag value to match (or 'EXISTS' for any value)"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of nodes to return"),
+    offset: int = Query(0, ge=0, description="Number of nodes to skip"),
+    sort_by: str = Query("last_seen", description="Field to sort by (last_seen, first_seen, public_key)"),
+    order: str = Query("desc", description="Sort order (asc, desc)"),
+    db: Session = Depends(get_db),
+) -> NodeListResponse:
+    """
+    Query nodes by tag key/value.
+
+    Args:
+        tag_key: Tag key to filter by
+        tag_value: Tag value to match (supports boolean, number, string, or 'EXISTS' for any value)
+        limit: Maximum number of nodes to return
+        offset: Number of nodes to skip for pagination
+        sort_by: Field to sort by
+        order: Sort order
+        db: Database session
+
+    Returns:
+        Paginated list of nodes matching the tag criteria
+    """
+    # Build base query with join
+    query = db.query(Node).join(
+        NodeTag, Node.public_key == NodeTag.node_public_key
+    ).filter(NodeTag.key == tag_key)
+
+    # Apply value filter (with type coercion)
+    if tag_value.upper() != "EXISTS":
+        query = _apply_tag_value_filter(query, tag_value)
+
+    # Apply sorting
+    query = _apply_node_sorting(query, sort_by, order)
+
+    # Get total count
+    total = query.count()
+
+    # Apply pagination
+    nodes = query.limit(limit).offset(offset).all()
+
+    return NodeListResponse(
+        nodes=nodes,
+        total=total,
+        limit=limit,
+        offset=offset
     )

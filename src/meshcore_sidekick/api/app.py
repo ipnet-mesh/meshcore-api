@@ -183,6 +183,7 @@ Data is automatically cleaned up based on the configured retention period (defau
     from .routes import telemetry, trace_paths, statistics, commands, tags
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
+    app.include_router(tags.router, prefix="/api/v1", tags=["tags"])
     app.include_router(nodes.router, prefix="/api/v1", tags=["nodes"])
     app.include_router(messages.router, prefix="/api/v1", tags=["messages"])
     app.include_router(advertisements.router, prefix="/api/v1", tags=["advertisements"])
@@ -190,7 +191,6 @@ Data is automatically cleaned up based on the configured retention period (defau
     app.include_router(trace_paths.router, prefix="/api/v1", tags=["trace_paths"])
     app.include_router(statistics.router, prefix="/api/v1", tags=["statistics"])
     app.include_router(commands.router, prefix="/api/v1", tags=["commands"])
-    app.include_router(tags.router, prefix="/api/v1", tags=["tags"])
 
     # =========================================================================
     # Prometheus Metrics
