@@ -251,33 +251,9 @@ class Application:
 
 
 def main() -> None:
-    """Main entry point."""
-    # Load configuration
-    config = Config.from_args_and_env()
-
-    # Setup logging
-    setup_logging(level=config.log_level, format_type=config.log_format)
-
-    # Create and run application
-    app = Application(config)
-
-    # Setup signal handlers
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    def signal_handler(sig, frame):
-        logger.info(f"Received signal {sig}")
-        loop.create_task(app.stop())
-
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
-    try:
-        loop.run_until_complete(app.run())
-    except KeyboardInterrupt:
-        logger.info("Keyboard interrupt")
-    finally:
-        loop.close()
+    """Main entry point - delegates to CLI."""
+    from .cli import cli
+    cli()
 
 
 if __name__ == "__main__":

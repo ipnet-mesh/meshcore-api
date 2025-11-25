@@ -9,8 +9,40 @@
 
 ## Useful Commands:
 
-- Start application: `python -m meshcore_api`
-- Query tool: `python -m meshcore_api.query`
+The application provides a Click-based CLI with the following commands:
+
+- Start server: `meshcore-api server [OPTIONS]` or `python -m meshcore_api server`
+- Query database: `meshcore-api query [OPTIONS]` or `python -m meshcore_api query`
+- Show help: `meshcore-api --help`
+
+### Server Command
+
+Start the MeshCore API server:
+```bash
+meshcore-api server --use-mock --api-port 8000
+```
+
+Common options:
+- `--serial-port`: Serial port for MeshCore device
+- `--use-mock`: Use mock MeshCore for testing
+- `--api-host`, `--api-port`: Configure API server
+- `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
+- `--db-path`: Path to SQLite database
+
+### Query Command
+
+Query the database for captured MeshCore data:
+```bash
+meshcore-api query --summary
+meshcore-api query --nodes 10
+meshcore-api query --messages 20
+```
+
+Common options:
+- `--summary`: Show summary statistics only
+- `--nodes N`: Show N discovered nodes
+- `--messages N`: Show N recent messages
+- `--activity N`: Show activity timeline for last N hours
 
 ## Database Schema
 

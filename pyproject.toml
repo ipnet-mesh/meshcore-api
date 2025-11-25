@@ -6,6 +6,10 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 packages = [{include = "meshcore_api", from = "src"}]
 
+[tool.poetry.scripts]
+meshcore-api = "meshcore_api.cli:cli"
+meshcore_api = "meshcore_api.cli:cli"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 meshcore = "^2.2.1"
@@ -17,6 +21,7 @@ pydantic = "^2.9.0"
 prometheus-client = "^0.21.0"
 prometheus-fastapi-instrumentator = "^7.0.0"
 python-multipart = "^0.0.12"
+click = "^8.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"

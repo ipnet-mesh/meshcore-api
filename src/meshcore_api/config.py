@@ -41,20 +41,30 @@ class Config:
     log_format: str = "json"  # json|text
 
     @classmethod
-    def from_args_and_env(cls) -> "Config":
+    def from_args_and_env(cls, cli_args: Optional[dict] = None) -> "Config":
         """
         Load configuration from CLI arguments, environment variables, and defaults.
 
         Priority: CLI args > Environment variables > Defaults
 
+        Args:
+            cli_args: Optional dictionary of CLI arguments (if not provided, will parse from sys.argv)
+
         Returns:
             Config instance
         """
-        # Parse CLI arguments
-        parser = argparse.ArgumentParser(
-            description="MeshCore API - Event collector and API server",
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter
-        )
+        # Parse CLI arguments if not provided
+        if cli_args is None:
+            parser = argparse.ArgumentParser(
+                description="MeshCore API - Event collector and API server",
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter
+            )
+        else:
+            # Use a dummy parser when cli_args is provided
+            parser = argparse.ArgumentParser(
+                description="MeshCore API - Event collector and API server",
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter
+            )
 
         # Connection arguments
         conn_group = parser.add_argument_group('Connection')
@@ -173,7 +183,33 @@ class Config:
             help="Log output format"
         )
 
-        args = parser.parse_args()
+        # Only parse args if not provided
+        if cli_args is None:
+            args = parser.parse_args()
+        else:
+            # Create an argparse Namespace from the provided dict
+            args = argparse.Namespace(**{
+                'serial_port': cli_args.get('serial_port'),
+                'serial_baud': cli_args.get('serial_baud'),
+                'use_mock': cli_args.get('use_mock', False),
+                'mock_scenario': cli_args.get('mock_scenario'),
+                'mock_loop': cli_args.get('mock_loop', False),
+                'mock_nodes': cli_args.get('mock_nodes'),
+                'mock_min_interval': cli_args.get('mock_min_interval'),
+                'mock_max_interval': cli_args.get('mock_max_interval'),
+                'mock_center_lat': cli_args.get('mock_center_lat'),
+                'mock_center_lon': cli_args.get('mock_center_lon'),
+                'db_path': cli_args.get('db_path'),
+                'retention_days': cli_args.get('retention_days'),
+                'cleanup_interval_hours': cli_args.get('cleanup_interval_hours'),
+                'api_host': cli_args.get('api_host'),
+                'api_port': cli_args.get('api_port'),
+                'api_title': cli_args.get('api_title'),
+                'api_version': cli_args.get('api_version'),
+                'no_metrics': cli_args.get('metrics') is False if 'metrics' in cli_args else False,
+                'log_level': cli_args.get('log_level'),
+                'log_format': cli_args.get('log_format'),
+            })
 
         # Helper function to get value with priority: CLI > Env > Default
         def get_value(cli_arg, env_var, default, type_converter=str):
