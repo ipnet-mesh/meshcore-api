@@ -38,12 +38,10 @@ meshcore_api server \
 
 ## Configuration
 
-Configuration priority: **CLI Arguments > Environment Variables > Defaults**
-
 ### CLI Arguments
 
 ```bash
-python -m meshcore_api --help
+meshcore_api --help
 ```
 
 ### Environment Variables
@@ -65,31 +63,28 @@ View captured data with the query tool:
 
 ```bash
 # Full report (all tracked tables)
-python -m meshcore_api.query
+meshcore_api query
 
 # Summary only
-python -m meshcore_api.query --summary
+meshcore_api query --summary
 
 # Recent messages (last 20)
-python -m meshcore_api.query --messages 20
+meshcore_api query --messages 20
 
 # Discovered nodes
-python -m meshcore_api.query --nodes 10
+meshcore_api query --nodes 10
 
 # Recent advertisements
-python -m meshcore_api.query --advertisements 10
+meshcore_api query --advertisements 10
 
 # Telemetry data
-python -m meshcore_api.query --telemetry 5
+meshcore_api query --telemetry 5
 
 # Trace paths
-python -m meshcore_api.query --traces 5
-
-# Activity in last 6 hours
-python -m meshcore_api.query --activity 6
+meshcore_api query --traces 5
 
 # Custom database location
-python -m meshcore_api.query --db-path /data/meshcore.db
+meshcore_api query --db-path /data/meshcore.db
 ```
 
 ### Docker
@@ -200,7 +195,7 @@ The endpoint automatically detects value types:
 Tags are automatically displayed when viewing nodes:
 
 ```bash
-python -m meshcore_api.query --nodes 10
+meshcore_api query --nodes 10
 ```
 
 Output includes tags for each node:
