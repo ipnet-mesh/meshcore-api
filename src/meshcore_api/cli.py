@@ -87,6 +87,11 @@ def cli():
     default=None,
     help="Enable/disable Prometheus metrics (default: enabled)",
 )
+@click.option(
+    "--enable-write/--no-write",
+    default=None,
+    help="Enable/disable write operations (default: enabled)",
+)
 def server(**kwargs):
     """Start the MeshCore API server."""
     from .__main__ import Application
@@ -245,6 +250,108 @@ def query(db_path, summary, events, nodes, messages, advertisements, telemetry, 
         sys.exit(1)
     except Exception as e:
         click.echo(f"Database error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument("json_file", type=click.Path(exists=True))
+@click.option(
+    "--db-path",
+    type=click.Path(),
+    help="Path to database file",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview changes without applying them",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    help="Show detailed progress for each node",
+)
+@click.option(
+    "--continue-on-error",
+    is_flag=True,
+    help="Continue processing even if some nodes fail",
+)
+@click.option(
+    "--validate-only",
+    is_flag=True,
+    help="Only validate the JSON file without applying changes",
+)
+def tag(json_file, db_path, dry_run, verbose, continue_on_error, validate_only):
+    """Import node tags from a JSON file.
+
+    The JSON file should contain a mapping of node public keys (64 hex chars)
+    to tag objects. Each tag object should have 'value_type' and 'value' fields.
+
+    Example JSON format:
+
+    \b
+    {
+      "abc123...def": {
+        "friendly_name": {"value_type": "string", "value": "Gateway"},
+        "location": {
+          "value_type": "coordinate",
+          "value": {"latitude": 37.7749, "longitude": -122.4194}
+        },
+        "is_gateway": {"value_type": "boolean", "value": true},
+        "battery_count": {"value_type": "number", "value": 4}
+      }
+    }
+
+    Examples:
+
+    \b
+      # Apply tags from file
+      meshcore_api tag node_tags.json
+
+      # Preview changes
+      meshcore_api tag node_tags.json --dry-run
+
+      # Use custom database path with verbose output
+      meshcore_api tag node_tags.json --db-path ./custom.db --verbose
+
+      # Validate only without applying
+      meshcore_api tag node_tags.json --validate-only
+    """
+    from .tag_importer import TagImporter
+    from .database.engine import DatabaseEngine
+
+    # Use Config to resolve db_path with same priority as server command
+    cli_args = {}
+    if db_path is not None:
+        cli_args['db_path'] = db_path
+
+    config = Config.from_args_and_env(cli_args)
+
+    try:
+        # Initialize database engine
+        db_engine = DatabaseEngine(config.db_path)
+        db_engine.initialize()
+
+        # Create importer and process file
+        importer = TagImporter(db_engine)
+        result = importer.import_from_file(
+            json_file,
+            dry_run=dry_run,
+            continue_on_error=continue_on_error,
+            validate_only=validate_only,
+            verbose=verbose
+        )
+
+        # Close database
+        db_engine.close()
+
+        # Exit with appropriate code
+        if result.success:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
 

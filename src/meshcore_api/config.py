@@ -36,6 +36,9 @@ class Config:
     # === Prometheus ===
     metrics_enabled: bool = True
 
+    # === Write Operations ===
+    enable_write: bool = True
+
     # === Logging ===
     log_level: str = "INFO"
     log_format: str = "json"  # json|text
@@ -168,6 +171,14 @@ class Config:
             help="Disable Prometheus metrics"
         )
 
+        # Write operations arguments
+        write_group = parser.add_argument_group('Write Operations')
+        write_group.add_argument(
+            "--no-write",
+            action="store_true",
+            help="Disable write operations (read-only mode)"
+        )
+
         # Logging arguments
         log_group = parser.add_argument_group('Logging')
         log_group.add_argument(
@@ -207,6 +218,7 @@ class Config:
                 'api_title': cli_args.get('api_title'),
                 'api_version': cli_args.get('api_version'),
                 'no_metrics': cli_args.get('metrics') is False if 'metrics' in cli_args else False,
+                'no_write': cli_args.get('enable_write') is False if 'enable_write' in cli_args else False,
                 'log_level': cli_args.get('log_level'),
                 'log_format': cli_args.get('log_format'),
             })
@@ -289,6 +301,10 @@ class Config:
             None, "MESHCORE_METRICS_ENABLED", config.metrics_enabled, bool
         )
 
+        config.enable_write = not args.no_write and get_value(
+            None, "MESHCORE_ENABLE_WRITE", config.enable_write, bool
+        )
+
         config.log_level = get_value(
             args.log_level, "MESHCORE_LOG_LEVEL", config.log_level
         )
@@ -333,6 +349,7 @@ class Config:
             f"    Host: {self.api_host}",
             f"    Port: {self.api_port}",
             f"    Metrics: {'Enabled' if self.metrics_enabled else 'Disabled'}",
+            f"    Write Operations: {'Enabled' if self.enable_write else 'Disabled (Read-only mode)'}",
             "  Logging:",
             f"    Level: {self.log_level}",
             f"    Format: {self.log_format}",

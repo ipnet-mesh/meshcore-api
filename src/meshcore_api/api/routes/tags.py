@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db
+from ..dependencies import get_db, check_write_enabled
 from ..schemas import (
     NodeResponse, NodeListResponse,
     NodeTagResponse, NodeTagListResponse, TagValueRequest, TagValueUpdateRequest,
@@ -252,6 +252,7 @@ async def get_node_tag(
     response_model=NodeTagResponse,
     summary="Set or update a tag",
     description="Set or update a single tag for a node (upsert operation)",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def set_node_tag(
     public_key: str,
@@ -297,6 +298,7 @@ async def set_node_tag(
     response_model=BulkTagUpdateResponse,
     summary="Bulk update tags",
     description="Update multiple tags on a single node in one atomic transaction",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def bulk_update_tags(
     public_key: str,
@@ -357,6 +359,7 @@ async def bulk_update_tags(
     "/nodes/{public_key}/tags/{key}",
     summary="Delete a tag",
     description="Delete a specific tag from a node",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def delete_node_tag(
     public_key: str,

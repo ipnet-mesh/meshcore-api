@@ -16,7 +16,7 @@ from .subscriber.event_handler import EventHandler
 from .subscriber.metrics import get_metrics
 from .utils.logging import setup_logging
 from .api.app import create_app
-from .api.dependencies import set_meshcore_instance
+from .api.dependencies import set_meshcore_instance, set_config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +91,12 @@ class Application:
         logger.info("Subscribing to MeshCore events...")
         await self.meshcore.subscribe_to_events(self.event_handler.handle_event)
 
-        # Make MeshCore instance available to API routes
+        # Make MeshCore and Config instances available to API routes
         set_meshcore_instance(self.meshcore)
+        set_config_instance(self.config)
+
+        # Query contacts from device
+        await self._query_contacts()
 
         # Sync device clock and announce presence
         await self._sync_clock()
@@ -217,6 +221,23 @@ class Application:
                 logger.info("Clock sync request sent successfully")
         except Exception as e:
             logger.error(f"Failed to sync clock: {e}", exc_info=True)
+
+    async def _query_contacts(self) -> None:
+        """Query contacts from MeshCore device during startup."""
+        if not self.meshcore:
+            return
+
+        try:
+            logger.info("Querying contacts from MeshCore device...")
+            contacts = await self.meshcore.get_contacts()
+            if contacts:
+                logger.info(f"Retrieved {len(contacts)} contacts from device")
+                for contact in contacts:
+                    logger.debug(f"  - {contact.public_key[:8]}... ({contact.name or 'unnamed'}, {contact.node_type or 'unknown'})")
+            else:
+                logger.info("No contacts found on device")
+        except Exception as e:
+            logger.error(f"Failed to query contacts: {e}", exc_info=True)
 
     async def _send_startup_advert(self) -> None:
         """Send an advertisement during startup."""

@@ -3,7 +3,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..dependencies import get_meshcore
+from ..dependencies import get_meshcore, check_write_enabled
 from ..schemas import (
     SendMessageRequest, SendMessageResponse,
     SendChannelMessageRequest, SendChannelMessageResponse,
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
     response_model=SendMessageResponse,
     summary="Send a direct message",
     description="Send a direct message to a specific node by public key",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def send_message(
     request: SendMessageRequest,
@@ -73,6 +74,7 @@ async def send_message(
     response_model=SendChannelMessageResponse,
     summary="Send a channel message",
     description="Broadcast a message to all nodes on the channel",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def send_channel_message(
     request: SendChannelMessageRequest,
@@ -118,6 +120,7 @@ async def send_channel_message(
     response_model=SendAdvertResponse,
     summary="Send an advertisement",
     description="Broadcast an advertisement to announce this device on the network",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def send_advert(
     request: SendAdvertRequest,
@@ -160,6 +163,7 @@ async def send_advert(
     response_model=SendTracePathResponse,
     summary="Initiate a trace path",
     description="Initiate a trace path request to discover the route to a destination node",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def send_trace_path(
     request: SendTracePathRequest,
@@ -206,6 +210,7 @@ async def send_trace_path(
     response_model=PingResponse,
     summary="Ping a node",
     description="Send a ping request to check connectivity to a specific node",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def ping_node(
     request: PingRequest,
@@ -248,6 +253,7 @@ async def ping_node(
     response_model=SendTelemetryRequestResponse,
     summary="Request telemetry from a node",
     description="Send a request to a node to return its telemetry data (sensors, battery, etc.)",
+    dependencies=[Depends(check_write_enabled)],
 )
 async def send_telemetry_request(
     request: SendTelemetryRequestRequest,

@@ -14,6 +14,7 @@ The application provides a Click-based CLI with the following commands:
 
 - Start server: `meshcore_api server [OPTIONS]` or `python -m meshcore_api server`
 - Query database: `meshcore_api query [OPTIONS]` or `python -m meshcore_api query`
+- Import tags: `meshcore_api tag JSON_FILE [OPTIONS]` or `python -m meshcore_api tag JSON_FILE`
 - Show help: `meshcore_api --help`
 
 ### Server Command
@@ -45,6 +46,43 @@ Common options:
 - `--messages N`: Show N recent messages
 - `--activity N`: Show activity timeline for last N hours
 
+### Tag Command
+
+Import node tags from a JSON file for bulk tag management:
+```bash
+meshcore_api tag node_tags.json
+meshcore_api tag node_tags.json --dry-run
+meshcore_api tag node_tags.json --verbose
+```
+
+Common options:
+- `--db-path PATH`: Path to SQLite database
+- `--dry-run`: Preview changes without applying them
+- `--verbose`: Show detailed progress for each node
+- `--continue-on-error`: Continue processing even if some nodes fail
+- `--validate-only`: Only validate the JSON file without applying changes
+
+JSON file format:
+```json
+{
+  "full_64_char_public_key": {
+    "friendly_name": {"value_type": "string", "value": "Gateway Node"},
+    "location": {
+      "value_type": "coordinate",
+      "value": {"latitude": 37.7749, "longitude": -122.4194}
+    },
+    "is_gateway": {"value_type": "boolean", "value": true},
+    "battery_count": {"value_type": "number", "value": 4}
+  }
+}
+```
+
+Supported value types:
+- `string`: Text values
+- `number`: Numeric values (int or float)
+- `boolean`: True/false values
+- `coordinate`: Geographic coordinates with latitude and longitude
+
 ## Database Schema
 
 The application stores MeshCore event data in SQLite with the following key tables:
@@ -67,8 +105,9 @@ The application supports custom metadata tags for nodes with typed values:
 - **Coordinate tags**: `location` with lat/long validation
 
 Tags can be managed via:
-- REST API: `/api/v1/nodes/{public_key}/tags` endpoints
-- Bulk updates: `/api/v1/nodes/{public_key}/tags/bulk`
-- Query across nodes: `/api/v1/tags`
+- **CLI**: `meshcore_api tag` command for bulk imports from JSON files
+- **REST API**: `/api/v1/nodes/{public_key}/tags` endpoints
+- **Bulk updates**: `/api/v1/nodes/{public_key}/tags/bulk`
+- **Query across nodes**: `/api/v1/tags`
 
-See API documentation at `/docs` for full details.
+See API documentation at `/docs` and `meshcore_api tag --help` for full details.
