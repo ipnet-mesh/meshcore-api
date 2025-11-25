@@ -159,7 +159,7 @@ SCENARIOS = {
                 "type": "TRACE_DATA",
                 "data": {
                     "initiator_tag": 305419896,
-                    "destination_public_key": "fa9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedc",
+                    "path_len": 2,
                     "path_hashes": ["b3", "fa"],
                     "snr_values": [48.0, 45.2],
                     "hop_count": 2,

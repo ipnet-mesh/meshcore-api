@@ -1,4 +1,4 @@
-"""Utility to dump meshcore_py message-related event payloads."""
+"""Utility to dump meshcore_py message- and trace-related event payloads."""
 
 import asyncio
 import json
@@ -7,11 +7,11 @@ from meshcore_api.config import Config
 from meshcore_api.meshcore.real import RealMeshCore
 
 
-TARGET_EVENTS = {"CONTACT_MSG_RECV", "CHANNEL_MSG_RECV", "MSG_SENT"}
+TARGET_EVENTS = {"CONTACT_MSG_RECV", "CHANNEL_MSG_RECV", "MSG_SENT", "TRACE_DATA"}
 
 
 async def main() -> None:
-    """Connect to MeshCore and print message event payloads."""
+    """Connect to MeshCore and print selected event payloads."""
     config = Config.from_args_and_env()
     meshcore = RealMeshCore(config.serial_port, config.serial_baud)
 
@@ -33,7 +33,7 @@ async def main() -> None:
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop_event.set)
 
-    print("Listening for CONTACT/CHANNEL message events (Ctrl+C to stop)...")
+    print("Listening for CONTACT/CHANNEL/TRACE events (Ctrl+C to stop)...")
     try:
         await stop_event.wait()
     finally:

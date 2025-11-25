@@ -326,7 +326,7 @@ class MockMeshCore(MeshCoreInterface):
                 type="TRACE_DATA",
                 payload={
                     "initiator_tag": random.randint(0, 0xFFFFFFFF),
-                    "destination_public_key": node["public_key"],
+                    "path_len": hop_count,
                     "path_hashes": path_hashes,
                     "snr_values": snr_values,
                     "hop_count": hop_count,

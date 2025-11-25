@@ -8,8 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
 from ..schemas import TracePathListResponse
-from ...database.models import TracePath, Node
-from ...utils.address import normalize_public_key
+from ...database.models import TracePath
 
 router = APIRouter()
 
@@ -21,7 +20,6 @@ router = APIRouter()
     description="Get trace path results with optional filters for destination and date range",
 )
 async def query_trace_paths(
-    destination_prefix: Optional[str] = Query(None, min_length=2, max_length=64, description="Filter by destination public key prefix"),
     start_date: Optional[datetime] = Query(None, description="Filter trace paths after this date (ISO 8601)"),
     end_date: Optional[datetime] = Query(None, description="Filter trace paths before this date (ISO 8601)"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of trace paths to return"),
@@ -32,7 +30,6 @@ async def query_trace_paths(
     Query trace path results with filters.
 
     Args:
-        destination_prefix: Filter by destination public key prefix (2-64 chars)
         start_date: Only include trace paths after this timestamp
         end_date: Only include trace paths before this timestamp
         limit: Maximum number of trace paths to return (1-1000)
@@ -44,23 +41,6 @@ async def query_trace_paths(
     """
     # Start with base query
     query = db.query(TracePath)
-
-    # Apply destination_prefix filter
-    if destination_prefix:
-        normalized_prefix = normalize_public_key(destination_prefix)
-        # Find all nodes matching the prefix
-        matching_nodes = Node.find_by_prefix(db, normalized_prefix)
-        if matching_nodes:
-            node_keys = [node.public_key for node in matching_nodes]
-            query = query.filter(TracePath.destination_public_key.in_(node_keys))
-        else:
-            # No matching nodes, return empty result
-            return TracePathListResponse(
-                trace_paths=[],
-                total=0,
-                limit=limit,
-                offset=offset,
-            )
 
     # Apply date filters
     if start_date:

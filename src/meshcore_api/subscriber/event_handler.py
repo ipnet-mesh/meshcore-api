@@ -361,9 +361,6 @@ class EventHandler:
             logger.warning(f"Skipping TRACE_DATA with missing initiator_tag: {payload}")
             return
 
-        destination_key = payload.get("destination_public_key")
-        normalized_destination = normalize_public_key(destination_key) if destination_key else None
-
         path_hashes = payload.get("path_hashes")
         if path_hashes is None and "path" in payload:
             path_hashes = [hop.get("hash") for hop in payload.get("path", []) if hop.get("hash") is not None]
@@ -372,12 +369,18 @@ class EventHandler:
         if snr_values is None and "path" in payload:
             snr_values = [hop.get("snr") for hop in payload.get("path", []) if hop.get("snr") is not None]
 
-        hop_count = payload.get("hop_count") or (len(path_hashes) if path_hashes is not None else None)
+        path_len = payload.get("path_len")
+        if path_len is None and path_hashes is not None:
+            path_len = len(path_hashes)
+
+        hop_count = payload.get("hop_count") or path_len or (len(path_hashes) if path_hashes is not None else None)
 
         with session_scope() as session:
             trace = TracePath(
                 initiator_tag=initiator_tag,
-                destination_public_key=normalized_destination,
+                path_len=path_len,
+                flags=payload.get("flags"),
+                auth=payload.get("auth"),
                 path_hashes=json.dumps(path_hashes or []),
                 snr_values=json.dumps(snr_values or []),
                 hop_count=hop_count,

@@ -252,7 +252,7 @@ class DatabaseQuery:
         print("-" * 80)
 
         self.cursor.execute(
-            "SELECT initiator_tag, destination_public_key, path_hashes, "
+            "SELECT initiator_tag, path_len, flags, auth, path_hashes, "
             "snr_values, hop_count, completed_at "
             "FROM trace_paths ORDER BY completed_at DESC LIMIT ?",
             (limit,)
@@ -260,11 +260,15 @@ class DatabaseQuery:
         results = self.cursor.fetchall()
 
         if results:
-            for idx, (tag, dest, hashes, snrs, hops, completed) in enumerate(results, 1):
+            for idx, (tag, path_len, flags, auth, hashes, snrs, hops, completed) in enumerate(results, 1):
                 print(f"\n  Trace Path #{idx}")
                 print(f"    Initiator Tag: 0x{tag:08x}")
-                if dest:
-                    print(f"    Destination: {dest}")
+                if path_len is not None:
+                    print(f"    Path length: {path_len}")
+                if flags is not None:
+                    print(f"    Flags: {flags}")
+                if auth is not None:
+                    print(f"    Auth: {auth}")
                 print(f"    Hop Count: {hops or 'N/A'}")
                 print(f"    Completed: {completed}")
                 if hashes:

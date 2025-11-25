@@ -123,7 +123,9 @@ class TracePath(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     initiator_tag: Mapped[int] = mapped_column(Integer, nullable=False)
-    destination_public_key: Mapped[Optional[str]] = mapped_column(String(64))
+    path_len: Mapped[Optional[int]] = mapped_column(Integer)
+    flags: Mapped[Optional[int]] = mapped_column(Integer)
+    auth: Mapped[Optional[int]] = mapped_column(Integer)
     path_hashes: Mapped[Optional[str]] = mapped_column(Text)  # JSON array of 2-char hashes
     snr_values: Mapped[Optional[str]] = mapped_column(Text)  # JSON array of SNR values
     hop_count: Mapped[Optional[int]] = mapped_column(Integer)

@@ -139,7 +139,9 @@ class TracePathResponse(BaseModel):
 
     id: int
     initiator_tag: int
-    destination_public_key: Optional[str] = None
+    path_len: Optional[int] = None
+    flags: Optional[int] = None
+    auth: Optional[int] = None
     path_hashes: Optional[str] = None
     snr_values: Optional[str] = None
     hop_count: Optional[int] = None
@@ -161,7 +163,6 @@ class TracePathListResponse(BaseModel):
 class TracePathFilters(BaseModel):
     """Query filters for trace paths."""
 
-    destination_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by destination public key prefix")
     start_date: Optional[datetime] = Field(None, description="Filter trace paths after this date")
     end_date: Optional[datetime] = Field(None, description="Filter trace paths before this date")
 
