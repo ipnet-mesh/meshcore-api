@@ -78,6 +78,46 @@ class RealMeshCore(MeshCoreInterface):
         self._event_handlers.append(handler)
         logger.info(f"Added event handler: {handler.__name__} (total handlers: {len(self._event_handlers)})")
 
+    async def _resolve_destination(self, destination: str) -> str:
+        """
+        Resolve a destination prefix to a full public key.
+
+        Args:
+            destination: Public key or prefix (minimum 2 characters)
+
+        Returns:
+            Full public key
+
+        Raises:
+            ValueError: If prefix is too short, no contact found, or multiple matches
+        """
+        if not destination:
+            raise ValueError("Destination cannot be empty")
+
+        # If destination looks like a full key (64 hex chars), return as-is
+        if len(destination) == 64 and all(c in '0123456789abcdefABCDEF' for c in destination):
+            return destination.lower()
+
+        # Require at least 2 characters for prefix matching
+        if len(destination) < 2:
+            raise ValueError("Destination prefix must be at least 2 characters")
+
+        # Ensure contacts are loaded
+        await self.meshcore.ensure_contacts(follow=True)
+
+        # Try to find contact by prefix
+        contact = self.meshcore.get_contact_by_key_prefix(destination)
+
+        if not contact:
+            raise ValueError(f"No contact found matching prefix '{destination}'")
+
+        full_key = contact.get("public_key")
+        if not full_key:
+            raise ValueError(f"Contact found but has no public key")
+
+        logger.debug(f"Resolved prefix '{destination}' to full key '{full_key[:8]}...'")
+        return full_key
+
     async def _handle_meshcore_event(self, event) -> None:
         """
         Internal handler that converts meshcore_py events to our Event format.
@@ -119,7 +159,9 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.commands.send_msg(destination, text)
+            # Resolve destination prefix to full public key
+            resolved_dest = await self._resolve_destination(destination)
+            result = await self.meshcore.commands.send_msg(resolved_dest, text)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -166,7 +208,9 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.commands.send_path_discovery(destination)
+            # Resolve destination prefix to full public key
+            resolved_dest = await self._resolve_destination(destination)
+            result = await self.meshcore.commands.send_path_discovery(resolved_dest)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -181,8 +225,10 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
+            # Resolve destination prefix to full public key
+            resolved_dest = await self._resolve_destination(destination)
             # MeshCore doesn't have a dedicated ping, so use status request
-            result = await self.meshcore.commands.send_statusreq(destination)
+            result = await self.meshcore.commands.send_statusreq(resolved_dest)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -197,7 +243,9 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.commands.send_telemetry_req(destination)
+            # Resolve destination prefix to full public key
+            resolved_dest = await self._resolve_destination(destination)
+            result = await self.meshcore.commands.send_telemetry_req(resolved_dest)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}

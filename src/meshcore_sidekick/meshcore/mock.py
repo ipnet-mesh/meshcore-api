@@ -92,6 +92,47 @@ class MockMeshCore(MeshCoreInterface):
         self._event_handlers.append(handler)
         logger.debug(f"Added event handler: {handler.__name__}")
 
+    def _resolve_destination(self, destination: str) -> str:
+        """
+        Resolve a destination prefix to a full public key.
+
+        Args:
+            destination: Public key or prefix (minimum 2 characters)
+
+        Returns:
+            Full public key
+
+        Raises:
+            ValueError: If prefix is too short, no contact found, or multiple matches
+        """
+        if not destination:
+            raise ValueError("Destination cannot be empty")
+
+        # If destination looks like a full key (64 hex chars), return as-is
+        if len(destination) == 64 and all(c in '0123456789abcdefABCDEF' for c in destination):
+            return destination.lower()
+
+        # Require at least 2 characters for prefix matching
+        if len(destination) < 2:
+            raise ValueError("Destination prefix must be at least 2 characters")
+
+        # Find matching nodes by prefix
+        destination_lower = destination.lower()
+        matching_nodes = [
+            node for node in self._simulated_nodes
+            if node["public_key"].lower().startswith(destination_lower)
+        ]
+
+        if not matching_nodes:
+            raise ValueError(f"No contact found matching prefix '{destination}'")
+
+        if len(matching_nodes) > 1:
+            logger.warning(f"Multiple contacts match prefix '{destination}', using first match")
+
+        full_key = matching_nodes[0]["public_key"]
+        logger.debug(f"Resolved prefix '{destination}' to full key '{full_key[:8]}...'")
+        return full_key
+
     def _generate_simulated_nodes(self) -> None:
         """Generate simulated node data."""
         node_names = [
@@ -336,13 +377,20 @@ class MockMeshCore(MeshCoreInterface):
 
     async def send_message(self, destination: str, text: str, text_type: str = "plain") -> Event:
         """Send a direct message (mock)."""
+        # Resolve destination prefix to full public key
+        try:
+            resolved_dest = self._resolve_destination(destination)
+        except ValueError as e:
+            logger.error(f"Failed to resolve destination: {e}")
+            return Event(type="ERROR", payload={"error": str(e)})
+
         self._message_counter += 1
-        logger.info(f"Mock: Sending message to {destination}: {text}")
+        logger.info(f"Mock: Sending message to {resolved_dest[:8]}...: {text}")
         return Event(
             type="MSG_SENT",
             payload={
                 "message_id": self._message_counter,
-                "destination": destination,
+                "destination": resolved_dest,
                 "text": text,
                 "estimated_delivery_ms": random.randint(1000, 5000),
             }
@@ -371,30 +419,51 @@ class MockMeshCore(MeshCoreInterface):
 
     async def send_trace_path(self, destination: str) -> Event:
         """Send trace path request (mock)."""
+        # Resolve destination prefix to full public key
+        try:
+            resolved_dest = self._resolve_destination(destination)
+        except ValueError as e:
+            logger.error(f"Failed to resolve destination: {e}")
+            return Event(type="ERROR", payload={"error": str(e)})
+
         tag = random.randint(0, 0xFFFFFFFF)
-        logger.info(f"Mock: Sending trace path to {destination}, tag={tag}")
+        logger.info(f"Mock: Sending trace path to {resolved_dest[:8]}..., tag={tag}")
         return Event(
             type="TRACE_INITIATED",
             payload={
-                "destination": destination,
+                "destination": resolved_dest,
                 "initiator_tag": tag,
             }
         )
 
     async def ping(self, destination: str) -> Event:
         """Ping node (mock)."""
-        logger.info(f"Mock: Pinging {destination}")
+        # Resolve destination prefix to full public key
+        try:
+            resolved_dest = self._resolve_destination(destination)
+        except ValueError as e:
+            logger.error(f"Failed to resolve destination: {e}")
+            return Event(type="ERROR", payload={"error": str(e)})
+
+        logger.info(f"Mock: Pinging {resolved_dest[:8]}...")
         return Event(
             type="PING_SENT",
-            payload={"destination": destination}
+            payload={"destination": resolved_dest}
         )
 
     async def send_telemetry_request(self, destination: str) -> Event:
         """Request telemetry (mock)."""
-        logger.info(f"Mock: Requesting telemetry from {destination}")
+        # Resolve destination prefix to full public key
+        try:
+            resolved_dest = self._resolve_destination(destination)
+        except ValueError as e:
+            logger.error(f"Failed to resolve destination: {e}")
+            return Event(type="ERROR", payload={"error": str(e)})
+
+        logger.info(f"Mock: Requesting telemetry from {resolved_dest[:8]}...")
         return Event(
             type="TELEMETRY_REQUEST_SENT",
-            payload={"destination": destination}
+            payload={"destination": resolved_dest}
         )
 
     async def get_device_info(self) -> Event:
