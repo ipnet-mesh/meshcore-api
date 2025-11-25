@@ -6,7 +6,7 @@ MeshCore companion application for event collection, persistence, and REST API a
 
 - Subscribe to all MeshCore events via Serial/BLE connection
 - Persist events in SQLite database with configurable retention
-- **Custom node metadata tags** with typed values (strings, numbers, booleans, coordinates)
+- Custom node metadata tags with typed values (strings, numbers, booleans, coordinates)
 - REST API for querying collected data and sending commands
 - Mock MeshCore implementation for development without hardware
 - Prometheus metrics for monitoring
