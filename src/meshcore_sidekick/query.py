@@ -54,6 +54,7 @@ class DatabaseQuery:
         tables = [
             ("events_log", "All Events"),
             ("nodes", "Nodes"),
+            ("node_tags", "Node Tags"),
             ("messages", "Messages"),
             ("advertisements", "Advertisements"),
             ("paths", "Routing Paths"),
@@ -120,14 +121,14 @@ class DatabaseQuery:
         print("-" * 80)
 
         self.cursor.execute(
-            "SELECT name, public_key_prefix_8, node_type, last_seen, first_seen "
+            "SELECT public_key, name, public_key_prefix_8, node_type, last_seen, first_seen "
             "FROM nodes ORDER BY last_seen DESC LIMIT ?",
             (limit,)
         )
         results = self.cursor.fetchall()
 
         if results:
-            for name, prefix, node_type, last_seen, first_seen in results:
+            for public_key, name, prefix, node_type, last_seen, first_seen in results:
                 name_display = name or "Unknown"
                 type_display = node_type_name(node_type)
                 print(f"\n  Node: {name_display}")
@@ -135,6 +136,29 @@ class DatabaseQuery:
                 print(f"    Type: {type_display}")
                 print(f"    First Seen: {first_seen}")
                 print(f"    Last Seen: {last_seen}")
+
+                # Query and display tags for this node
+                self.cursor.execute(
+                    "SELECT key, value_type, value_string, value_number, value_boolean, "
+                    "latitude, longitude FROM node_tags WHERE node_public_key = ? ORDER BY key",
+                    (public_key,)
+                )
+                tags = self.cursor.fetchall()
+
+                if tags:
+                    print("    Tags:")
+                    for key, value_type, value_string, value_number, value_boolean, latitude, longitude in tags:
+                        if value_type == 'string':
+                            value = value_string
+                        elif value_type == 'number':
+                            value = value_number
+                        elif value_type == 'boolean':
+                            value = bool(value_boolean)
+                        elif value_type == 'coordinate':
+                            value = f"({latitude}, {longitude})"
+                        else:
+                            value = "unknown"
+                        print(f"      {key}: {value}")
         else:
             print("  No nodes discovered")
 
@@ -177,20 +201,20 @@ class DatabaseQuery:
         print("-" * 80)
 
         self.cursor.execute(
-            "SELECT public_key, adv_type, name, latitude, longitude, received_at "
+            "SELECT public_key, adv_type, name, flags, received_at "
             "FROM advertisements ORDER BY received_at DESC LIMIT ?",
             (limit,)
         )
         results = self.cursor.fetchall()
 
         if results:
-            for idx, (pub_key, adv_type, name, lat, lon, recv) in enumerate(results, 1):
+            for idx, (pub_key, adv_type, name, flags, recv) in enumerate(results, 1):
                 print(f"\n  Advertisement #{idx}")
                 print(f"    Public Key: {pub_key[:16]}...")
                 print(f"    Type: {adv_type or 'unknown'}")
                 print(f"    Name: {name or 'Unknown'}")
-                if lat is not None and lon is not None:
-                    print(f"    Location: {lat:.4f}, {lon:.4f}")
+                if flags is not None:
+                    print(f"    Flags: 0x{flags:04x}")
                 print(f"    Received: {recv}")
         else:
             print("  No advertisements recorded")

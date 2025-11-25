@@ -56,6 +56,30 @@ class Node(Base):
             ).all()
 
 
+class NodeTag(Base):
+    """Custom metadata tags for nodes with typed values."""
+
+    __tablename__ = "node_tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    node_public_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    key: Mapped[str] = mapped_column(String(128), nullable=False)
+    value_type: Mapped[str] = mapped_column(String(16), nullable=False)  # string/number/boolean/coordinate
+    value_string: Mapped[Optional[str]] = mapped_column(String(512))
+    value_number: Mapped[Optional[float]] = mapped_column(Float)
+    value_boolean: Mapped[Optional[bool]] = mapped_column(Boolean)
+    latitude: Mapped[Optional[float]] = mapped_column(Float)  # For coordinate type
+    longitude: Mapped[Optional[float]] = mapped_column(Float)  # For coordinate type
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_node_tags_unique", "node_public_key", "key", unique=True),
+        Index("idx_node_tags_node", "node_public_key"),
+        Index("idx_node_tags_key", "key"),
+    )
+
+
 class Message(Base):
     """Represents a direct or channel message."""
 

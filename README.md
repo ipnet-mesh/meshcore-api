@@ -6,6 +6,7 @@ MeshCore companion application for event collection, persistence, and REST API a
 
 - Subscribe to all MeshCore events via Serial/BLE connection
 - Persist events in SQLite database with configurable retention
+- **Custom node metadata tags** with typed values (strings, numbers, booleans, coordinates)
 - REST API for querying collected data and sending commands
 - Mock MeshCore implementation for development without hardware
 - Prometheus metrics for monitoring
@@ -99,6 +100,76 @@ python -m meshcore_sidekick.query --activity 6
 
 # Custom database location
 python -m meshcore_sidekick.query --db-path /data/meshcore.db
+```
+
+## Node Tags
+
+Add custom metadata to nodes beyond what's captured in MeshCore events. Tags support typed values for validation and efficient querying.
+
+### Tag Types
+
+- **String**: Friendly names, device manufacturers, models, notes
+- **Number**: Battery counts, firmware versions, hop counts
+- **Boolean**: Feature flags (is_gateway, is_active, etc.)
+- **Coordinate**: GPS locations with latitude/longitude validation
+
+### Managing Tags via API
+
+```bash
+# Set a friendly name (string tag) - key is in URL, not needed in body
+curl -X PUT http://localhost:8000/api/v1/nodes/{public_key}/tags/friendly_name \
+  -H "Content-Type: application/json" \
+  -d '{"value_type": "string", "value": "Router-1"}'
+
+# Set GPS location (coordinate tag)
+curl -X PUT http://localhost:8000/api/v1/nodes/{public_key}/tags/location \
+  -H "Content-Type: application/json" \
+  -d '{"value_type": "coordinate", "value": {"latitude": 45.52, "longitude": -122.68}}'
+
+# Bulk update multiple tags at once
+curl -X POST http://localhost:8000/api/v1/nodes/{public_key}/tags/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tags": [
+      {"key": "manufacturer", "value_type": "string", "value": "Meshtastic"},
+      {"key": "battery_count", "value_type": "number", "value": 2},
+      {"key": "is_gateway", "value_type": "boolean", "value": true}
+    ]
+  }'
+
+# Get all tags for a node
+curl http://localhost:8000/api/v1/nodes/{public_key}/tags
+
+# Query tags across all nodes
+curl "http://localhost:8000/api/v1/tags?key=manufacturer"
+
+# Get all unique tag keys
+curl http://localhost:8000/api/v1/tags/keys
+
+# Delete a tag
+curl -X DELETE http://localhost:8000/api/v1/nodes/{public_key}/tags/battery_count
+```
+
+### Viewing Tags in Query Tool
+
+Tags are automatically displayed when viewing nodes:
+
+```bash
+python -m meshcore_sidekick.query --nodes 10
+```
+
+Output includes tags for each node:
+```
+  Node: Router-1
+    Public Key: 01abcdef...
+    Type: Repeater
+    First Seen: 2025-11-25 12:00:00
+    Last Seen: 2025-11-25 18:00:00
+    Tags:
+      friendly_name: Router-1
+      is_gateway: True
+      location: (45.52, -122.68)
+      manufacturer: Meshtastic
 ```
 
 ## API Documentation
