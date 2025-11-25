@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "meshcore-sidekick"
+name = "meshcore-api"
 version = "1.0.0"
 description = "MeshCore companion application for event collection and REST API"
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
-packages = [{include = "meshcore_sidekick", from = "src"}]
+packages = [{include = "meshcore_api", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -45,5 +45,5 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
+#asyncio_mode = "auto"
 testpaths = ["tests"]

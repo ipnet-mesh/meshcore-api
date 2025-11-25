@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(
-    title: str = "MeshCore Sidekick API",
+    title: str = "MeshCore API",
     version: str = "1.0.0",
     enable_metrics: bool = True,
 ) -> FastAPI:
@@ -33,7 +33,7 @@ def create_app(
         title=title,
         version=version,
         description="""
-# MeshCore Sidekick REST API
+# MeshCore API
 
 This API provides access to MeshCore network events and allows sending commands to the mesh network.
 
@@ -58,8 +58,8 @@ No rate limiting is currently enforced.
 Data is automatically cleaned up based on the configured retention period (default: 30 days).
         """,
         contact={
-            "name": "MeshCore Sidekick",
-            "url": "https://github.com/ipnet-mesh/meshcore-sidekick",
+            "name": "MeshCore API",
+            "url": "https://github.com/ipnet-mesh/meshcore-api",
         },
         license_info={
             "name": "MIT",

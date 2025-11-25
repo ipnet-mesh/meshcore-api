@@ -330,24 +330,24 @@ class DatabaseQuery:
 def main():
     """Main entry point for query tool."""
     parser = argparse.ArgumentParser(
-        description="Query MeshCore Sidekick database",
+        description="Query MeshCore API database",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Full report
-  python -m meshcore_sidekick.query
+  python -m meshcore_api.query
 
   # Summary only
-  python -m meshcore_sidekick.query --summary
+  python -m meshcore_api.query --summary
 
   # Recent messages
-  python -m meshcore_sidekick.query --messages 20
+  python -m meshcore_api.query --messages 20
 
   # Nodes discovered
-  python -m meshcore_sidekick.query --nodes
+  python -m meshcore_api.query --nodes
 
   # Activity in last 6 hours
-  python -m meshcore_sidekick.query --activity 6
+  python -m meshcore_api.query --activity 6
         """
     )
 

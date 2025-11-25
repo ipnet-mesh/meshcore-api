@@ -1,4 +1,4 @@
-# MeshCore Sidekick
+# MeshCore API
 
 MeshCore companion application for event collection, persistence, and REST API access.
 
@@ -22,14 +22,14 @@ MeshCore companion application for event collection, persistence, and REST API a
 pip install -r requirements.txt
 
 # Run with mock MeshCore
-python -m meshcore_sidekick --use-mock --log-level DEBUG
+python -m meshcore_api --use-mock --log-level DEBUG
 ```
 
 ### Production (Real Hardware)
 
 ```bash
 # Run with real MeshCore device
-python -m meshcore_sidekick \
+python -m meshcore_api \
     --serial-port /dev/ttyUSB0 \
     --serial-baud 115200 \
     --db-path /data/meshcore.db \
@@ -53,7 +53,7 @@ Configuration priority: **CLI Arguments > Environment Variables > Defaults**
 ### CLI Arguments
 
 ```bash
-python -m meshcore_sidekick --help
+python -m meshcore_api --help
 ```
 
 ### Environment Variables
@@ -75,31 +75,31 @@ View captured data with the query tool:
 
 ```bash
 # Full report (all tables and statistics)
-python -m meshcore_sidekick.query
+python -m meshcore_api.query
 
 # Summary statistics only
-python -m meshcore_sidekick.query --summary
+python -m meshcore_api.query --summary
 
 # Recent messages (last 20)
-python -m meshcore_sidekick.query --messages 20
+python -m meshcore_api.query --messages 20
 
 # Discovered nodes
-python -m meshcore_sidekick.query --nodes 10
+python -m meshcore_api.query --nodes 10
 
 # Recent advertisements
-python -m meshcore_sidekick.query --advertisements 10
+python -m meshcore_api.query --advertisements 10
 
 # Telemetry data
-python -m meshcore_sidekick.query --telemetry 5
+python -m meshcore_api.query --telemetry 5
 
 # Trace paths
-python -m meshcore_sidekick.query --traces 5
+python -m meshcore_api.query --traces 5
 
 # Activity in last 6 hours
-python -m meshcore_sidekick.query --activity 6
+python -m meshcore_api.query --activity 6
 
 # Custom database location
-python -m meshcore_sidekick.query --db-path /data/meshcore.db
+python -m meshcore_api.query --db-path /data/meshcore.db
 ```
 
 ## Node Tags
@@ -182,7 +182,7 @@ The endpoint automatically detects value types:
 Tags are automatically displayed when viewing nodes:
 
 ```bash
-python -m meshcore_sidekick.query --nodes 10
+python -m meshcore_api.query --nodes 10
 ```
 
 Output includes tags for each node:

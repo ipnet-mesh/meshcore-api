@@ -30,7 +30,7 @@ class Config:
     # === API ===
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_title: str = "MeshCore Sidekick API"
+    api_title: str = "MeshCore API"
     api_version: str = "1.0.0"
 
     # === Prometheus ===
@@ -52,7 +52,7 @@ class Config:
         """
         # Parse CLI arguments
         parser = argparse.ArgumentParser(
-            description="MeshCore Sidekick - Event collector and API server",
+            description="MeshCore API - Event collector and API server",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
 

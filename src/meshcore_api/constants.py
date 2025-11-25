@@ -1,4 +1,4 @@
-"""Common constants used across MeshCore Sidekick."""
+"""Common constants used across MeshCore API."""
 
 # Node types as delivered by MeshCore:
 # 0: unknown, 1: cli (companion), 2: rep (repeater)

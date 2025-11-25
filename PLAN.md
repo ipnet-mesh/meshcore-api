@@ -1,4 +1,4 @@
-# MeshCore Sidekick - Implementation Plan
+# MeshCore API - Implementation Plan
 
 ## Project Overview
 
@@ -292,7 +292,7 @@ MeshCore companion application that:
 - [ ] Expose ports (API: 8000)
 
 ### 4.2 Docker Compose (Development)
-- [ ] meshcore-sidekick service (mock mode)
+- [ ] meshcore-api service (mock mode)
 - [ ] Volume mounts for development
 - [ ] Environment variable configuration
 - [ ] Port mappings
@@ -300,7 +300,7 @@ MeshCore companion application that:
 - [ ] Optional: Grafana service
 
 ### 4.3 Docker Compose (Production)
-- [ ] meshcore-sidekick service (real hardware)
+- [ ] meshcore-api service (real hardware)
 - [ ] Serial device mapping
 - [ ] Persistent volume for database
 - [ ] Restart policy
@@ -309,7 +309,7 @@ MeshCore companion application that:
 
 ### 4.4 Prometheus Configuration
 - [ ] prometheus.yml scrape config
-- [ ] Target: meshcore-sidekick:8000/metrics
+- [ ] Target: meshcore-api:8000/metrics
 - [ ] Scrape interval: 15s
 
 ### 4.5 Grafana Dashboard
@@ -506,7 +506,7 @@ MESHCORE_CLEANUP_INTERVAL_HOURS=1
 # API
 MESHCORE_API_HOST=0.0.0.0
 MESHCORE_API_PORT=8000
-MESHCORE_API_TITLE="MeshCore Sidekick API"
+MESHCORE_API_TITLE="MeshCore API"
 MESHCORE_API_VERSION="1.0.0"
 
 # Metrics
@@ -628,8 +628,8 @@ Simulated battery drain over time
 ### Setup
 ```bash
 # Clone repository
-git clone https://github.com/ipnet-mesh/meshcore-sidekick.git
-cd meshcore-sidekick
+git clone https://github.com/ipnet-mesh/meshcore-api.git
+cd meshcore-api
 
 # Install dependencies
 pip install -r requirements.txt
@@ -641,13 +641,13 @@ poetry install
 ### Running
 ```bash
 # Development with mock
-python -m meshcore_sidekick --use-mock --log-level DEBUG
+python -m meshcore_api --use-mock --log-level DEBUG
 
 # With scenario
-python -m meshcore_sidekick --use-mock --mock-scenario simple_chat
+python -m meshcore_api --use-mock --mock-scenario simple_chat
 
 # Production with hardware
-python -m meshcore_sidekick --serial-port /dev/ttyUSB0
+python -m meshcore_api --serial-port /dev/ttyUSB0
 ```
 
 ### Testing
@@ -656,7 +656,7 @@ python -m meshcore_sidekick --serial-port /dev/ttyUSB0
 pytest
 
 # With coverage
-pytest --cov=meshcore_sidekick
+pytest --cov=meshcore_api
 
 # Specific test
 pytest tests/test_database.py
@@ -680,7 +680,7 @@ mypy src/
 
 ### Local Development
 ```bash
-python -m meshcore_sidekick --use-mock
+python -m meshcore_api --use-mock
 ```
 
 ### Docker (Mock)
@@ -696,16 +696,16 @@ docker-compose -f docker-compose.prod.yml up -d
 ### Systemd Service
 ```ini
 [Unit]
-Description=MeshCore Sidekick
+Description=MeshCore API
 After=network.target
 
 [Service]
 Type=simple
 User=meshcore
-WorkingDirectory=/opt/meshcore-sidekick
+WorkingDirectory=/opt/meshcore-api
 Environment="MESHCORE_SERIAL_PORT=/dev/ttyUSB0"
 Environment="MESHCORE_DB_PATH=/var/lib/meshcore/data.db"
-ExecStart=/usr/bin/python3 -m meshcore_sidekick
+ExecStart=/usr/bin/python3 -m meshcore_api
 Restart=always
 
 [Install]

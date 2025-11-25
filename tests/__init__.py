@@ -1,1 +1,1 @@
-"""Tests for MeshCore Sidekick."""
+"""Tests for MeshCore API."""

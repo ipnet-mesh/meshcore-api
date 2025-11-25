@@ -40,7 +40,7 @@ class Application:
 
     async def start(self) -> None:
         """Start the application."""
-        logger.info("Starting MeshCore Sidekick")
+        logger.info("Starting MeshCore API")
         logger.info(f"\n{self.config.display()}")
 
         # Initialize database
@@ -108,7 +108,7 @@ class Application:
 
     async def stop(self) -> None:
         """Stop the application."""
-        logger.info("Stopping MeshCore Sidekick...")
+        logger.info("Stopping MeshCore API...")
         self.running = False
 
         # Cancel API server task
