@@ -18,6 +18,26 @@ def is_valid_public_key(key: str) -> bool:
     return bool(re.match(r'^[0-9a-fA-F]+$', key))
 
 
+def validate_public_key(key: str, allow_prefix: bool = False) -> bool:
+    """
+    Validate a public key string.
+
+    Args:
+        key: Public key string to validate
+        allow_prefix: If True, allow keys shorter than 64 characters (prefixes)
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not is_valid_public_key(key):
+        return False
+
+    if not allow_prefix and len(key) != 64:
+        return False
+
+    return True
+
+
 def normalize_public_key(key: str) -> str:
     """
     Normalize public key to lowercase hex.
