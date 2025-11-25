@@ -1,8 +1,9 @@
 # Agent Rules
 
 * You MUST use Python (version in `.python-version` file)
-* You MUST create and activate a Python virtual environment in the `venv` directory
-  - `python -m venv .venv`
+* You MUST activate a Python virtual environment in the `venv` directory or create one if it does not exist:
+  - `ls ./venv` to check if it exists
+  - `python -m venv .venv` to create it
 - You MUST always activate the virtual environment before running any commands
   - `source .venv/bin/activate`
 * You MUST install all project dependecies using `pip install -e ".[dev]"` command`
@@ -11,15 +12,15 @@
 
 The application provides a Click-based CLI with the following commands:
 
-- Start server: `meshcore-api server [OPTIONS]` or `python -m meshcore_api server`
-- Query database: `meshcore-api query [OPTIONS]` or `python -m meshcore_api query`
-- Show help: `meshcore-api --help`
+- Start server: `meshcore_api server [OPTIONS]` or `python -m meshcore_api server`
+- Query database: `meshcore_api query [OPTIONS]` or `python -m meshcore_api query`
+- Show help: `meshcore_api --help`
 
 ### Server Command
 
 Start the MeshCore API server:
 ```bash
-meshcore-api server --use-mock --api-port 8000
+meshcore_api server --use-mock --api-port 8000
 ```
 
 Common options:
@@ -33,9 +34,9 @@ Common options:
 
 Query the database for captured MeshCore data:
 ```bash
-meshcore-api query --summary
-meshcore-api query --nodes 10
-meshcore-api query --messages 20
+meshcore_api query --summary
+meshcore_api query --nodes 10
+meshcore_api query --messages 20
 ```
 
 Common options:
