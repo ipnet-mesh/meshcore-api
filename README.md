@@ -36,16 +36,6 @@ python -m meshcore_api \
     --retention-days 90
 ```
 
-### Docker
-
-```bash
-# Development with mock
-docker-compose up --build
-
-# Production with real hardware
-docker-compose -f docker-compose.prod.yml up -d
-```
-
 ## Configuration
 
 Configuration priority: **CLI Arguments > Environment Variables > Defaults**
