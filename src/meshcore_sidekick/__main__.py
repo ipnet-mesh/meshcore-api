@@ -7,7 +7,8 @@ import sys
 from typing import Optional
 
 from .config import Config
-from .database.engine import init_database
+from .database.engine import init_database, session_scope
+from .database.models import Node, Advertisement
 from .database.cleanup import DataCleanup
 from .meshcore import RealMeshCore, MockMeshCore, MeshCoreInterface
 from .subscriber.event_handler import EventHandler
@@ -41,9 +42,6 @@ class Application:
         # Initialize database
         logger.info("Initializing database...")
         init_database(self.config.db_path)
-
-        # Initialize event handler
-        self.event_handler = EventHandler()
 
         # Initialize metrics
         if self.config.metrics_enabled:
@@ -81,6 +79,9 @@ class Application:
 
         if self.config.metrics_enabled:
             metrics.set_connection_status(True)
+
+        # Initialize event handler (needs meshcore for contact lookups)
+        self.event_handler = EventHandler(meshcore=self.meshcore)
 
         # Subscribe to events
         logger.info("Subscribing to MeshCore events...")

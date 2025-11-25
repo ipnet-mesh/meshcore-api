@@ -92,7 +92,10 @@ class RealMeshCore(MeshCoreInterface):
             event_type = event.type.name if hasattr(event.type, 'name') else str(event.type)
             event_payload = event.payload if hasattr(event, 'payload') else {}
 
-            logger.info(f"Processing event: {event_type}")
+            if event_type == "NEXT_CONTACT":
+                logger.debug(f"Processing event: {event_type}")
+            else:
+                logger.info(f"Processing event: {event_type}")
 
             our_event = Event(
                 type=event_type,
@@ -239,26 +242,26 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            contacts_result = await self.meshcore.get_contacts()
-            contacts = []
+            # meshcore_py exposes contacts via ensure_contacts + contacts property
+            await self.meshcore.ensure_contacts(follow=True)
 
-            # Convert meshcore_py contacts to our Contact format
-            if hasattr(contacts_result, 'payload') and 'contacts' in contacts_result.payload:
-                for mc_contact in contacts_result.payload['contacts']:
-                    contact = Contact(
-                        public_key=mc_contact.get('public_key', ''),
-                        name=mc_contact.get('name'),
-                        node_type=mc_contact.get('node_type'),
-                        latitude=mc_contact.get('latitude'),
-                        longitude=mc_contact.get('longitude')
-                    )
-                    contacts.append(contact)
+            contacts: List[Contact] = []
+            for mc_contact in self.meshcore.contacts.values():
+                contact = Contact(
+                    public_key=mc_contact.get("public_key", ""),
+                    name=mc_contact.get("adv_name") or mc_contact.get("name"),
+                    node_type=mc_contact.get("node_type") or mc_contact.get("type") or mc_contact.get("adv_type"),
+                    latitude=mc_contact.get("lat") or mc_contact.get("latitude"),
+                    longitude=mc_contact.get("lon") or mc_contact.get("longitude"),
+                )
+                contacts.append(contact)
 
             return contacts
 
         except Exception as e:
-            logger.error(f"Failed to get contacts: {e}")
+            logger.error(f"Failed to get contacts: {e}", exc_info=True)
             return []
+
 
     async def get_statistics(self, stat_type: str = "core") -> Event:
         """Get device statistics."""

@@ -3,8 +3,8 @@ import base64
 import json
 import logging
 from datetime import datetime
-from typing import Optional
-from ..meshcore.interface import Event
+from typing import Optional, List
+from ..meshcore.interface import Event, MeshCoreInterface, Contact
 from ..database.models import (
     Node,
     Message,
@@ -23,6 +23,7 @@ from ..database.models import (
 )
 from ..database.engine import session_scope
 from ..utils.address import normalize_public_key, extract_prefix
+from ..constants import NODE_TYPE_MAP, node_type_name
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,11 @@ logger = logging.getLogger(__name__)
 class EventHandler:
     """Handles MeshCore events and persists them to database."""
 
-    def __init__(self):
+    def __init__(self, meshcore: Optional[MeshCoreInterface] = None):
         """Initialize event handler."""
         self.event_count = 0
+        self.meshcore = meshcore
+        self._contact_fetch_inflight = False
 
     async def handle_event(self, event: Event) -> None:
         """
@@ -43,11 +46,16 @@ class EventHandler:
         """
         self.event_count += 1
 
+        # Some events are noisy/incremental and should be largely silent here
+        silent_types = {"NEXT_CONTACT"}
+
         try:
-            logger.debug(f"Processing event: {event.type}")
+            if event.type not in silent_types:
+                logger.debug(f"Processing event: {event.type}")
 
             # Log all events to events_log table
-            await self._log_event(event)
+            if event.type not in silent_types:
+                await self._log_event(event)
 
             # Handle specific event types
             handler_map = {
@@ -66,6 +74,11 @@ class EventHandler:
                 "BINARY_RESPONSE": self._handle_binary_response,
                 "CONTROL_DATA": self._handle_control_data,
                 "RAW_DATA": self._handle_raw_data,
+                # Contact sync events (used to enrich node info)
+                "NEXT_CONTACT": None,  # informational; handled on CONTACTS aggregate
+                "CONTACTS": self._handle_contact_sync,
+                # Error events (informational)
+                "ERROR": None,
                 # Internal meshcore_py events (informational only)
                 "MESSAGES_WAITING": None,  # Logged but not persisted separately
                 "NO_MORE_MSGS": None,  # Logged but not persisted separately
@@ -103,6 +116,103 @@ class EventHandler:
             return base64.b64encode(bytes(obj)).decode("ascii")
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
+    async def _fetch_contacts(self, fetch: bool = True) -> List[Contact]:
+        """
+        Fetch contacts from MeshCore.
+
+        Args:
+            fetch: If False, read cached contacts without issuing a fetch command.
+        """
+        if not self.meshcore:
+            return []
+        try:
+            if self._contact_fetch_inflight:
+                cache = getattr(self.meshcore, "contacts", {}) if hasattr(self.meshcore, "contacts") else {}
+                return self._contacts_from_cache(cache)
+
+            if hasattr(self.meshcore, "contacts"):
+                cache = getattr(self.meshcore, "contacts", {}) or {}
+                if cache and (not fetch or not self._contact_fetch_inflight):
+                    return self._contacts_from_cache(cache)
+
+            self._contact_fetch_inflight = True
+            try:
+                contacts = await self.meshcore.get_contacts()
+                return contacts or []
+            finally:
+                self._contact_fetch_inflight = False
+        except Exception as e:
+            logger.warning(f"Failed to fetch contacts from MeshCore: {e}")
+            return []
+
+    async def _handle_contact_sync(self, event: Event) -> None:
+        """
+        Handle NEXT_CONTACT and CONTACTS events.
+
+        We rely on meshcore.ensure_contacts to populate meshcore.contacts.
+        Here we upsert what the interface returns to refresh nodes.
+        """
+        contacts = await self._fetch_contacts(fetch=False)
+        for contact in contacts:
+            contact_key = getattr(contact, "public_key", None)
+            if not contact_key:
+                continue
+            normalized = normalize_public_key(contact_key)
+            await self._upsert_node(
+                normalized,
+                name=getattr(contact, "name", None),
+                node_type=node_type_name(getattr(contact, "node_type", None)),
+                latitude=getattr(contact, "latitude", None),
+                longitude=getattr(contact, "longitude", None),
+            )
+
+    async def _get_contact_for_key(self, normalized_key: str) -> Optional[Contact]:
+        """Retrieve contact info for a given key and upsert all contacts."""
+        contacts = await self._fetch_contacts(fetch=not self._contact_fetch_inflight)
+        match: Optional[Contact] = None
+
+        for contact in contacts:
+            contact_key = getattr(contact, "public_key", None)
+            if not contact_key:
+                continue
+            contact_norm = normalize_public_key(contact_key)
+            # Upsert every contact to keep node table in sync
+            await self._upsert_node(
+                contact_norm,
+                name=getattr(contact, "name", None),
+                node_type=node_type_name(getattr(contact, "node_type", None)),
+                latitude=getattr(contact, "latitude", None),
+                longitude=getattr(contact, "longitude", None),
+            )
+            if contact_norm == normalized_key:
+                match = contact
+
+        return match
+
+    @staticmethod
+    def _contacts_from_cache(cache: dict) -> List[Contact]:
+        """Convert meshcore contact cache dict to Contact list."""
+        contacts: List[Contact] = []
+        for mc_contact in cache.values():
+            contact = Contact(
+                public_key=mc_contact.get("public_key", ""),
+                name=mc_contact.get("adv_name") or mc_contact.get("name"),
+                node_type=mc_contact.get("node_type") or mc_contact.get("type") or mc_contact.get("adv_type"),
+                latitude=mc_contact.get("lat") or mc_contact.get("latitude"),
+                longitude=mc_contact.get("lon") or mc_contact.get("longitude"),
+            )
+            contacts.append(contact)
+        return contacts
+
+    def _should_update_name(self, current: Optional[str], new: Optional[str], normalized_key: str) -> bool:
+        """Decide if the stored node name should be replaced."""
+        if not new:
+            return False
+        if not current:
+            return True
+        placeholder = normalized_key[:8]
+        return current.lower() == placeholder.lower()
+
     async def _upsert_node(self, public_key: str, **kwargs) -> Optional[Node]:
         """
         Create or update node record.
@@ -116,6 +226,8 @@ class EventHandler:
         """
         try:
             normalized_key = normalize_public_key(public_key)
+            if "node_type" in kwargs:
+                kwargs["node_type"] = node_type_name(kwargs.get("node_type"))
 
             with session_scope() as session:
                 # Try to find existing node
@@ -125,8 +237,7 @@ class EventHandler:
                     # Update existing node
                     for key, value in kwargs.items():
                         if value is not None:
-                            if key == "name" and getattr(node, key):
-                                # Keep existing name if we already have one
+                            if key == "name" and not self._should_update_name(getattr(node, key), value, normalized_key):
                                 continue
                             setattr(node, key, value)
                     node.last_seen = datetime.utcnow()
@@ -158,24 +269,32 @@ class EventHandler:
             return
 
         normalized_key = normalize_public_key(public_key)
+        adv_type = payload.get("adv_type") or payload.get("type")
+
+        # Try to enrich with contact info (protocol delivers only pk in adverts)
+        contact = None
         name = (
             payload.get("name")
             or payload.get("node_name")
             or payload.get("device_name")
             or payload.get("alias")
         )
+        if not name and self.meshcore:
+            contact = await self._get_contact_for_key(normalized_key)
+            if contact and contact.name:
+                name = contact.name
+            if contact and contact.node_type and not adv_type:
+                adv_type = contact.node_type
         if not name:
             name = normalized_key[:8]
-
-        adv_type = payload.get("adv_type") or payload.get("type")
 
         # Upsert node
         await self._upsert_node(
             public_key,
             node_type=adv_type,
             name=name,
-            latitude=payload.get("latitude"),
-            longitude=payload.get("longitude"),
+            latitude=(contact.latitude if contact else payload.get("latitude")),
+            longitude=(contact.longitude if contact else payload.get("longitude")),
         )
 
         # Store advertisement

@@ -6,6 +6,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from .constants import node_type_name
 
 try:
     import sqlite3
@@ -128,7 +129,7 @@ class DatabaseQuery:
         if results:
             for name, prefix, node_type, last_seen, first_seen in results:
                 name_display = name or "Unknown"
-                type_display = node_type or "unknown"
+                type_display = node_type_name(node_type)
                 print(f"\n  Node: {name_display}")
                 print(f"    Public Key: {prefix}...")
                 print(f"    Type: {type_display}")
