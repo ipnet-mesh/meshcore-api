@@ -22,14 +22,14 @@ MeshCore companion application for event collection, persistence, and REST API a
 pip install -e ".[dev]"
 
 # Run with mock MeshCore
-python -m meshcore_api --use-mock --log-level DEBUG
+meshcore_api server --use-mock --log-level DEBUG
 ```
 
 ### Production (Real Hardware)
 
 ```bash
 # Run with real MeshCore device
-python -m meshcore_api \
+meshcore_api server \
     --serial-port /dev/ttyUSB0 \
     --serial-baud 115200 \
     --db-path /data/meshcore.db \
@@ -90,6 +90,21 @@ python -m meshcore_api.query --activity 6
 
 # Custom database location
 python -m meshcore_api.query --db-path /data/meshcore.db
+```
+
+### Docker
+
+Build and run with Docker/Compose:
+
+```bash
+# Build image
+docker build -t meshcore-api:local .
+
+# Run (mock mode by default)
+docker run --rm -p 8080:8080 -v $(pwd)/data:/data meshcore-api:local
+
+# Or with docker-compose
+docker compose up --build
 ```
 
 ## API Overview
