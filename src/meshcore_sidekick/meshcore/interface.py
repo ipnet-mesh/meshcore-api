@@ -18,8 +18,6 @@ class Contact:
     public_key: str
     name: Optional[str] = None
     node_type: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
 
 
 class MeshCoreInterface(ABC):

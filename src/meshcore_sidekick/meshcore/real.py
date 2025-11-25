@@ -299,8 +299,6 @@ class RealMeshCore(MeshCoreInterface):
                     public_key=mc_contact.get("public_key", ""),
                     name=mc_contact.get("adv_name") or mc_contact.get("name"),
                     node_type=mc_contact.get("node_type") or mc_contact.get("type") or mc_contact.get("adv_type"),
-                    latitude=mc_contact.get("lat") or mc_contact.get("latitude"),
-                    longitude=mc_contact.get("lon") or mc_contact.get("longitude"),
                 )
                 contacts.append(contact)
 

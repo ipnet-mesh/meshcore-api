@@ -494,8 +494,6 @@ class MockMeshCore(MeshCoreInterface):
                 public_key=node["public_key"],
                 name=node["name"],
                 node_type=node["node_type"],
-                latitude=node["latitude"],
-                longitude=node["longitude"],
             )
             contacts.append(contact)
         return contacts

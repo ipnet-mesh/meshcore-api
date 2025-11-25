@@ -162,8 +162,6 @@ class EventHandler:
                 normalized,
                 name=getattr(contact, "name", None),
                 node_type=node_type_name(getattr(contact, "node_type", None)),
-                latitude=getattr(contact, "latitude", None),
-                longitude=getattr(contact, "longitude", None),
             )
 
     async def _get_contact_for_key(self, normalized_key: str) -> Optional[Contact]:
@@ -181,8 +179,6 @@ class EventHandler:
                 contact_norm,
                 name=getattr(contact, "name", None),
                 node_type=node_type_name(getattr(contact, "node_type", None)),
-                latitude=getattr(contact, "latitude", None),
-                longitude=getattr(contact, "longitude", None),
             )
             if contact_norm == normalized_key:
                 match = contact
@@ -194,12 +190,11 @@ class EventHandler:
         """Convert meshcore contact cache dict to Contact list."""
         contacts: List[Contact] = []
         for mc_contact in cache.values():
+            pub_key = mc_contact.get("public_key", "")
             contact = Contact(
-                public_key=mc_contact.get("public_key", ""),
+                public_key=pub_key,
                 name=mc_contact.get("adv_name") or mc_contact.get("name"),
                 node_type=mc_contact.get("node_type") or mc_contact.get("type") or mc_contact.get("adv_type"),
-                latitude=mc_contact.get("lat") or mc_contact.get("latitude"),
-                longitude=mc_contact.get("lon") or mc_contact.get("longitude"),
             )
             contacts.append(contact)
         return contacts
@@ -210,8 +205,23 @@ class EventHandler:
             return False
         if not current:
             return True
+        # Don't update if the names are the same (case-insensitive)
+        if current.lower() == new.lower():
+            return False
+        # Check if current name is a placeholder (first 8 chars of key)
         placeholder = normalized_key[:8]
-        return current.lower() == placeholder.lower()
+        current_is_placeholder = current.lower() == placeholder.lower()
+        new_is_placeholder = new.lower() == placeholder.lower()
+
+        # Allow update if:
+        # 1. Current is a placeholder and new is not (upgrade to real name)
+        # 2. Current is not a placeholder and new is not (name change)
+        # Don't allow: Current is not a placeholder and new IS a placeholder (downgrade)
+        if current_is_placeholder:
+            return True  # Always upgrade from placeholder
+        if new_is_placeholder:
+            return False  # Never downgrade to placeholder
+        return True  # Both are real names, allow the update
 
     async def _upsert_node(self, public_key: str, **kwargs) -> Optional[Node]:
         """
@@ -238,7 +248,11 @@ class EventHandler:
                     for key, value in kwargs.items():
                         if value is not None:
                             if key == "name" and not self._should_update_name(getattr(node, key), value, normalized_key):
+                                logger.debug(f"Skipping name update for {normalized_key[:8]}...: '{getattr(node, key)}' -> '{value}'")
                                 continue
+                            old_value = getattr(node, key, None)
+                            if old_value != value:
+                                logger.info(f"Updating {key} for {normalized_key[:8]}...: {old_value} -> {value}")
                             setattr(node, key, value)
                     node.last_seen = datetime.utcnow()
                 else:
@@ -271,30 +285,29 @@ class EventHandler:
         normalized_key = normalize_public_key(public_key)
         adv_type = payload.get("adv_type") or payload.get("type")
 
-        # Try to enrich with contact info (protocol delivers only pk in adverts)
-        contact = None
-        name = (
+        # Extract data from advertisement payload
+        adv_name = (
             payload.get("name")
             or payload.get("node_name")
             or payload.get("device_name")
             or payload.get("alias")
+            or payload.get("adv_name")
         )
-        if not name and self.meshcore:
-            contact = await self._get_contact_for_key(normalized_key)
-            if contact and contact.name:
-                name = contact.name
-            if contact and contact.node_type and not adv_type:
-                adv_type = contact.node_type
-        if not name:
-            name = normalized_key[:8]
 
-        # Upsert node
+        # Try to enrich with contact info for name and type
+        contact = None
+        if (not adv_name or not adv_type) and self.meshcore:
+            contact = await self._get_contact_for_key(normalized_key)
+
+        # Use advertisement payload first, then contact data as fallback
+        name = adv_name or (contact.name if contact else None) or normalized_key[:8]
+        node_type = adv_type or (contact.node_type if contact else None)
+
+        # Upsert node (no GPS)
         await self._upsert_node(
             public_key,
-            node_type=adv_type,
+            node_type=node_type,
             name=name,
-            latitude=(contact.latitude if contact else payload.get("latitude")),
-            longitude=(contact.longitude if contact else payload.get("longitude")),
         )
 
         # Store advertisement
@@ -303,8 +316,6 @@ class EventHandler:
                 public_key=normalized_key,
                 adv_type=adv_type,
                 name=name,
-                latitude=payload.get("latitude"),
-                longitude=payload.get("longitude"),
                 flags=payload.get("flags"),
             )
             session.add(advert)

@@ -32,8 +32,6 @@ class Node(Base):
     public_key_prefix_8: Mapped[str] = mapped_column(String(8), nullable=False, index=True)
     node_type: Mapped[Optional[str]] = mapped_column(String(32))  # chat/repeater/room/none
     name: Mapped[Optional[str]] = mapped_column(String(128))
-    latitude: Mapped[Optional[float]] = mapped_column(Float)
-    longitude: Mapped[Optional[float]] = mapped_column(Float)
     last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime)
     first_seen: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
@@ -89,8 +87,6 @@ class Advertisement(Base):
     public_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     adv_type: Mapped[Optional[str]] = mapped_column(String(32))  # none/chat/repeater/room
     name: Mapped[Optional[str]] = mapped_column(String(128))
-    latitude: Mapped[Optional[float]] = mapped_column(Float)
-    longitude: Mapped[Optional[float]] = mapped_column(Float)
     flags: Mapped[Optional[int]] = mapped_column(Integer)
     received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
 

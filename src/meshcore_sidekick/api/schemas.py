@@ -34,8 +34,6 @@ class NodeResponse(BaseModel):
     public_key: str
     node_type: Optional[str] = None
     name: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
     last_seen: Optional[datetime] = None
     first_seen: datetime
     created_at: datetime
@@ -106,8 +104,6 @@ class AdvertisementResponse(BaseModel):
     public_key: str
     adv_type: Optional[str] = None
     name: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
     flags: Optional[int] = None
     received_at: datetime
 

@@ -16,6 +16,64 @@ from ...utils.address import normalize_public_key, validate_public_key
 router = APIRouter()
 
 
+def resolve_public_key_or_prefix(prefix: str, db: Session) -> str:
+    """
+    Resolve a public key or prefix to a full public key.
+
+    Args:
+        prefix: Public key (64 chars) or prefix (2+ chars)
+        db: Database session
+
+    Returns:
+        Full public key (64 hex characters)
+
+    Raises:
+        HTTPException: If prefix is invalid, no match found, or multiple matches
+    """
+    # Validate prefix length
+    if len(prefix) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Public key or prefix must be at least 2 characters",
+        )
+
+    # Normalize prefix
+    normalized_prefix = normalize_public_key(prefix)
+    if not validate_public_key(normalized_prefix, allow_prefix=True):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Public key or prefix must contain only hexadecimal characters",
+        )
+
+    # If it's already 64 characters, just validate it exists
+    if len(normalized_prefix) == 64:
+        node = db.query(Node).filter(Node.public_key == normalized_prefix).first()
+        if not node:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Node not found: {normalized_prefix[:8]}...",
+            )
+        return normalized_prefix
+
+    # Otherwise, resolve the prefix
+    nodes = Node.find_by_prefix(db, normalized_prefix)
+
+    if not nodes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No node found matching prefix '{prefix}'",
+        )
+
+    if len(nodes) > 1:
+        matching_keys = [node.public_key[:8] + "..." for node in nodes[:5]]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Prefix '{prefix}' matches {len(nodes)} nodes: {', '.join(matching_keys)}. Please use a longer prefix.",
+        )
+
+    return nodes[0].public_key
+
+
 @router.get(
     "/nodes",
     response_model=NodeListResponse,
@@ -124,7 +182,7 @@ async def search_nodes_by_prefix(
     "/nodes/{public_key}/messages",
     response_model=MessageListResponse,
     summary="Get messages for a specific node",
-    description="Get all messages sent to or from a specific node",
+    description="Get all messages sent to or from a specific node (supports prefix matching with 2+ characters)",
 )
 async def get_node_messages(
     public_key: str,
@@ -136,7 +194,7 @@ async def get_node_messages(
     Get messages for a specific node.
 
     Args:
-        public_key: Node public key (64 hex characters)
+        public_key: Node public key (64 hex characters) or prefix (2+ characters)
         limit: Maximum number of messages to return
         offset: Number of messages to skip
         db: Database session
@@ -145,29 +203,10 @@ async def get_node_messages(
         Paginated list of messages
 
     Raises:
-        HTTPException: If public key is invalid or node not found
+        HTTPException: If public key/prefix is invalid, not found, or matches multiple nodes
     """
-    # Validate and normalize public key
-    if len(public_key) != 64:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Public key must be exactly 64 characters",
-        )
-
-    normalized_key = normalize_public_key(public_key)
-    if not validate_public_key(normalized_key):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid public key format",
-        )
-
-    # Check if node exists
-    node = db.query(Node).filter(Node.public_key == normalized_key).first()
-    if not node:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Node not found",
-        )
+    # Resolve prefix to full public key
+    normalized_key = resolve_public_key_or_prefix(public_key, db)
 
     # Query messages
     query = db.query(Message).filter(
@@ -190,7 +229,7 @@ async def get_node_messages(
     "/nodes/{public_key}/paths",
     response_model=PathListResponse,
     summary="Get routing paths for a node",
-    description="Get all known routing paths to a specific node",
+    description="Get all known routing paths to a specific node (supports prefix matching with 2+ characters)",
 )
 async def get_node_paths(
     public_key: str,
@@ -200,36 +239,17 @@ async def get_node_paths(
     Get routing paths for a specific node.
 
     Args:
-        public_key: Node public key (64 hex characters)
+        public_key: Node public key (64 hex characters) or prefix (2+ characters)
         db: Database session
 
     Returns:
         List of routing paths
 
     Raises:
-        HTTPException: If public key is invalid or node not found
+        HTTPException: If public key/prefix is invalid, not found, or matches multiple nodes
     """
-    # Validate and normalize public key
-    if len(public_key) != 64:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Public key must be exactly 64 characters",
-        )
-
-    normalized_key = normalize_public_key(public_key)
-    if not validate_public_key(normalized_key):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid public key format",
-        )
-
-    # Check if node exists
-    node = db.query(Node).filter(Node.public_key == normalized_key).first()
-    if not node:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Node not found",
-        )
+    # Resolve prefix to full public key
+    normalized_key = resolve_public_key_or_prefix(public_key, db)
 
     # Query paths
     paths = db.query(Path).filter(
@@ -246,7 +266,7 @@ async def get_node_paths(
     "/nodes/{public_key}/telemetry",
     response_model=TelemetryListResponse,
     summary="Get telemetry data for a node",
-    description="Get all telemetry data received from a specific node",
+    description="Get all telemetry data received from a specific node (supports prefix matching with 2+ characters)",
 )
 async def get_node_telemetry(
     public_key: str,
@@ -258,7 +278,7 @@ async def get_node_telemetry(
     Get telemetry data for a specific node.
 
     Args:
-        public_key: Node public key (64 hex characters)
+        public_key: Node public key (64 hex characters) or prefix (2+ characters)
         limit: Maximum number of records to return
         offset: Number of records to skip
         db: Database session
@@ -267,29 +287,10 @@ async def get_node_telemetry(
         Paginated list of telemetry records
 
     Raises:
-        HTTPException: If public key is invalid or node not found
+        HTTPException: If public key/prefix is invalid, not found, or matches multiple nodes
     """
-    # Validate and normalize public key
-    if len(public_key) != 64:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Public key must be exactly 64 characters",
-        )
-
-    normalized_key = normalize_public_key(public_key)
-    if not validate_public_key(normalized_key):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid public key format",
-        )
-
-    # Check if node exists
-    node = db.query(Node).filter(Node.public_key == normalized_key).first()
-    if not node:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Node not found",
-        )
+    # Resolve prefix to full public key
+    normalized_key = resolve_public_key_or_prefix(public_key, db)
 
     # Query telemetry
     query = db.query(Telemetry).filter(
