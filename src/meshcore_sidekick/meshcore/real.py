@@ -119,7 +119,7 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.send_msg(destination, text)
+            result = await self.meshcore.commands.send_msg(destination, text)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -134,9 +134,9 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            # Note: meshcore_py may have a different method name for channel messages
-            # This is a placeholder - adjust based on actual API
-            result = await self.meshcore.send_channel_msg(text, flood=flood)
+            # Use channel 0 as the default broadcast channel
+            # Note: flood parameter is not used by send_chan_msg
+            result = await self.meshcore.commands.send_chan_msg(chan=0, msg=text)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -151,7 +151,7 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.send_advert(flood=flood)
+            result = await self.meshcore.commands.send_advert(flood=flood)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -166,7 +166,7 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.send_trace_path(destination)
+            result = await self.meshcore.commands.send_path_discovery(destination)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -182,7 +182,7 @@ class RealMeshCore(MeshCoreInterface):
 
         try:
             # MeshCore doesn't have a dedicated ping, so use status request
-            result = await self.meshcore.send_status_req(destination)
+            result = await self.meshcore.commands.send_statusreq(destination)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -197,7 +197,7 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.send_telemetry_req(destination)
+            result = await self.meshcore.commands.send_telemetry_req(destination)
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -212,7 +212,7 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.send_device_query()
+            result = await self.meshcore.commands.send_device_query()
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -227,7 +227,7 @@ class RealMeshCore(MeshCoreInterface):
             raise RuntimeError("Not connected to MeshCore")
 
         try:
-            result = await self.meshcore.get_bat()
+            result = await self.meshcore.commands.get_bat()
             return Event(
                 type=result.type.name if hasattr(result.type, 'name') else str(result.type),
                 payload=result.payload if hasattr(result, 'payload') else {}
@@ -261,19 +261,3 @@ class RealMeshCore(MeshCoreInterface):
         except Exception as e:
             logger.error(f"Failed to get contacts: {e}", exc_info=True)
             return []
-
-
-    async def get_statistics(self, stat_type: str = "core") -> Event:
-        """Get device statistics."""
-        if not self.meshcore:
-            raise RuntimeError("Not connected to MeshCore")
-
-        try:
-            result = await self.meshcore.get_stats(stat_type)
-            return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
-            )
-        except Exception as e:
-            logger.error(f"Failed to get statistics: {e}")
-            return Event(type="ERROR", payload={"error": str(e)})

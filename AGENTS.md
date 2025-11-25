@@ -1,6 +1,6 @@
 # Agent Rules
 
-* You MUST use Python (version in `python-version` file)
+* You MUST use Python (version in `.python-version` file)
 * You MUST create and activate a Python virtual environment in the `venv` directory
   - `python -m venv .venv`
 - You MUST always activate the virtual environment before running any commands

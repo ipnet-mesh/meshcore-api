@@ -430,31 +430,3 @@ class MockMeshCore(MeshCoreInterface):
             )
             contacts.append(contact)
         return contacts
-
-    async def get_statistics(self, stat_type: str = "core") -> Event:
-        """Get statistics (mock)."""
-        if stat_type == "core":
-            data = {
-                "battery": random.uniform(3.5, 4.2),
-                "uptime": random.randint(0, 86400),
-                "errors": random.randint(0, 10),
-                "queue_depth": random.randint(0, 20),
-            }
-        elif stat_type == "radio":
-            data = {
-                "noise_floor": random.uniform(-120, -100),
-                "rssi": random.uniform(-90, -50),
-                "snr": random.uniform(5, 30),
-                "airtime_percent": random.uniform(5, 50),
-            }
-        else:  # packets
-            data = {
-                "tx_count": random.randint(100, 10000),
-                "rx_count": random.randint(200, 20000),
-                "tx_errors": random.randint(0, 100),
-            }
-
-        return Event(
-            type="STATISTICS",
-            payload={"stat_type": stat_type, "data": data}
-        )

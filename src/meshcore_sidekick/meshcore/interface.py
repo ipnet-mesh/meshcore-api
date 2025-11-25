@@ -170,16 +170,3 @@ class MeshCoreInterface(ABC):
             List of Contact objects
         """
         pass
-
-    @abstractmethod
-    async def get_statistics(self, stat_type: str = "core") -> Event:
-        """
-        Get device statistics.
-
-        Args:
-            stat_type: Type of statistics (core/radio/packets)
-
-        Returns:
-            Event with statistics payload
-        """
-        pass
