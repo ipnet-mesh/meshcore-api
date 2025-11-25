@@ -92,6 +92,16 @@ class MockMeshCore(MeshCoreInterface):
         self._event_handlers.append(handler)
         logger.debug(f"Added event handler: {handler.__name__}")
 
+    async def sync_clock(self) -> Event:
+        """Pretend to sync clock for mock implementation."""
+        now = datetime.utcnow()
+        timestamp = int(now.timestamp())
+        logger.info(f"Mock: Syncing clock to {now.isoformat()}Z")
+        return Event(
+            type="CLOCK_SYNCED",
+            payload={"timestamp": timestamp}
+        )
+
     def _resolve_destination(self, destination: str) -> str:
         """
         Resolve a destination prefix to a full public key.
@@ -238,21 +248,23 @@ class MockMeshCore(MeshCoreInterface):
 
         elif event_type == "CONTACT_MSG_RECV":
             from_node = node
-            to_node = random.choice(self._simulated_nodes)
             messages = [
                 "Hello!", "How are you?", "Testing 123", "Roger that",
                 "Message received", "All good here", "Check",
                 "Standing by", "Copy that", "Acknowledged"
             ]
+            txt_type = random.choice([0, 0, 0, 2])  # mostly plain, sometimes signed
+            signature = "".join(random.choices("0123456789abcdef", k=8)) if txt_type == 2 else None
             return Event(
                 type="CONTACT_MSG_RECV",
                 payload={
-                    "from_public_key": from_node["public_key"],
-                    "to_public_key": to_node["public_key"],
+                    "pubkey_prefix": from_node["public_key"][:12],
+                    "path_len": random.randint(0, 10),
+                    "txt_type": txt_type,
+                    "signature": signature,
                     "text": random.choice(messages),
-                    "snr": random.uniform(-5, 30),
-                    "rssi": random.uniform(-110, -50),
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "SNR": random.uniform(-5, 30),
+                    "sender_timestamp": int(datetime.utcnow().timestamp()),
                 }
             )
 
@@ -265,10 +277,12 @@ class MockMeshCore(MeshCoreInterface):
             return Event(
                 type="CHANNEL_MSG_RECV",
                 payload={
-                    "from_public_key": node["public_key"],
+                    "channel_idx": random.randint(0, 5),
+                    "path_len": random.randint(0, 10),
+                    "txt_type": 0,
                     "text": random.choice(messages),
-                    "snr": random.uniform(-5, 30),
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "SNR": random.uniform(-5, 30),
+                    "sender_timestamp": int(datetime.utcnow().timestamp()),
                 }
             )
 

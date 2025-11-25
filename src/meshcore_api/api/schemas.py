@@ -61,13 +61,14 @@ class MessageResponse(BaseModel):
     id: int
     direction: str
     message_type: str
-    text_type: str
-    from_public_key: Optional[str] = None
-    to_public_key: Optional[str] = None
+    pubkey_prefix: Optional[str] = None
+    channel_idx: Optional[int] = None
+    txt_type: Optional[int] = None
+    path_len: Optional[int] = None
+    signature: Optional[str] = None
     content: str
     snr: Optional[float] = None
-    rssi: Optional[float] = None
-    timestamp: datetime
+    sender_timestamp: Optional[datetime] = None
     received_at: datetime
 
     class Config:
@@ -86,11 +87,11 @@ class MessageListResponse(BaseModel):
 class MessageFilters(BaseModel):
     """Query filters for messages."""
 
-    from_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by sender public key prefix")
-    to_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by recipient public key prefix")
+    pubkey_prefix: Optional[str] = Field(None, min_length=2, max_length=12, description="Filter by sender pubkey prefix (contact messages)")
+    channel_idx: Optional[int] = Field(None, description="Filter by channel index (channel messages)")
     message_type: Optional[str] = Field(None, description="Filter by message type (contact/channel)")
-    start_date: Optional[datetime] = Field(None, description="Filter messages after this date")
-    end_date: Optional[datetime] = Field(None, description="Filter messages before this date")
+    start_date: Optional[datetime] = Field(None, description="Filter messages after this sender_timestamp")
+    end_date: Optional[datetime] = Field(None, description="Filter messages before this sender_timestamp")
 
 
 # ============================================================================
@@ -127,30 +128,6 @@ class AdvertisementFilters(BaseModel):
     adv_type: Optional[str] = Field(None, description="Filter by advertisement type")
     start_date: Optional[datetime] = Field(None, description="Filter advertisements after this date")
     end_date: Optional[datetime] = Field(None, description="Filter advertisements before this date")
-
-
-# ============================================================================
-# Path Schemas
-# ============================================================================
-
-class PathResponse(BaseModel):
-    """Response model for a routing path."""
-
-    id: int
-    node_public_key: str
-    hop_count: Optional[int] = None
-    updated_at: datetime
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class PathListResponse(BaseModel):
-    """Response model for path list."""
-
-    paths: List[PathResponse]
-    total: int
 
 
 # ============================================================================
@@ -220,57 +197,6 @@ class TelemetryFilters(BaseModel):
     node_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by node public key prefix")
     start_date: Optional[datetime] = Field(None, description="Filter telemetry after this date")
     end_date: Optional[datetime] = Field(None, description="Filter telemetry before this date")
-
-
-# ============================================================================
-# Statistics Schemas
-# ============================================================================
-
-class StatisticsResponse(BaseModel):
-    """Response model for statistics."""
-
-    id: int
-    stat_type: str
-    data: str
-    recorded_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class StatisticsListResponse(BaseModel):
-    """Response model for statistics list."""
-
-    statistics: List[StatisticsResponse]
-    total: int
-
-
-# ============================================================================
-# Device Info Schemas
-# ============================================================================
-
-class DeviceInfoResponse(BaseModel):
-    """Response model for device information."""
-
-    id: int
-    battery_voltage: Optional[float] = None
-    battery_percentage: Optional[int] = None
-    storage_used: Optional[int] = None
-    storage_total: Optional[int] = None
-    device_time: Optional[datetime] = None
-    firmware_version: Optional[str] = None
-    capabilities: Optional[str] = None
-    recorded_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class DeviceInfoListResponse(BaseModel):
-    """Response model for device info list."""
-
-    device_info: List[DeviceInfoResponse]
-    total: int
 
 
 # ============================================================================

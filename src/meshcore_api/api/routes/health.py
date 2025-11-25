@@ -9,11 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..dependencies import get_db, get_meshcore
 from ..schemas import HealthCheckResponse, DatabaseHealthResponse, MeshCoreHealthResponse
-from ...database.models import (
-    Node, Message, Advertisement, Path, TracePath, Telemetry,
-    Acknowledgment, StatusResponse, Statistics, BinaryResponse,
-    ControlData, RawData, DeviceInfo, EventLog
-)
+from ...database.models import Node, Message, Advertisement, TracePath, Telemetry, EventLog
 from ...meshcore.interface import MeshCoreInterface
 
 router = APIRouter()
@@ -103,16 +99,8 @@ async def database_health(db: Session = Depends(get_db)) -> DatabaseHealthRespon
             "nodes": db.query(Node).count(),
             "messages": db.query(Message).count(),
             "advertisements": db.query(Advertisement).count(),
-            "paths": db.query(Path).count(),
             "trace_paths": db.query(TracePath).count(),
             "telemetry": db.query(Telemetry).count(),
-            "acknowledgments": db.query(Acknowledgment).count(),
-            "status_responses": db.query(StatusResponse).count(),
-            "statistics": db.query(Statistics).count(),
-            "binary_responses": db.query(BinaryResponse).count(),
-            "control_data": db.query(ControlData).count(),
-            "raw_data": db.query(RawData).count(),
-            "device_info": db.query(DeviceInfo).count(),
             "events_log": db.query(EventLog).count(),
         }
 

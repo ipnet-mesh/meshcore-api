@@ -18,8 +18,8 @@ MeshCore companion application for event collection, persistence, and REST API a
 ### Development (Mock Mode)
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (editable, with dev extras if available)
+pip install -e ".[dev]"
 
 # Run with mock MeshCore
 python -m meshcore_api --use-mock --log-level DEBUG
@@ -64,10 +64,10 @@ See full configuration options in documentation.
 View captured data with the query tool:
 
 ```bash
-# Full report (all tables and statistics)
+# Full report (all tracked tables)
 python -m meshcore_api.query
 
-# Summary statistics only
+# Summary only
 python -m meshcore_api.query --summary
 
 # Recent messages (last 20)
@@ -91,6 +91,19 @@ python -m meshcore_api.query --activity 6
 # Custom database location
 python -m meshcore_api.query --db-path /data/meshcore.db
 ```
+
+## API Overview
+
+OpenAPI docs are available at `/docs` when the server is running. Core endpoints:
+
+- `GET /api/v1/messages` — message history
+- `GET /api/v1/advertisements` — node adverts
+- `GET /api/v1/telemetry` — telemetry data
+- `GET /api/v1/trace_paths` — trace results (meshcore trace data)
+- `GET /api/v1/nodes` and `/api/v1/nodes/{public_key}` — node info
+- `PUT/POST /api/v1/nodes/{public_key}/tags` — node tags
+- `POST /api/v1/commands/*` — send messages, channel messages, adverts, trace, telemetry requests
+- `GET /api/v1/health` — health/status
 
 ## Node Tags
 

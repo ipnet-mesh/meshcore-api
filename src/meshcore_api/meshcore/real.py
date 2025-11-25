@@ -1,6 +1,7 @@
 """Real MeshCore implementation using meshcore_py library."""
 
 import logging
+from datetime import datetime, timezone
 from typing import Callable, List, Optional
 from meshcore import MeshCore as MeshCorePy
 from meshcore import EventType
@@ -77,6 +78,24 @@ class RealMeshCore(MeshCoreInterface):
         """Subscribe to all MeshCore events."""
         self._event_handlers.append(handler)
         logger.info(f"Added event handler: {handler.__name__} (total handlers: {len(self._event_handlers)})")
+
+    async def sync_clock(self) -> Event:
+        """Sync MeshCore clock to host time."""
+        if not self.meshcore:
+            raise RuntimeError("Not connected to MeshCore")
+
+        try:
+            now = datetime.now(timezone.utc)
+            timestamp = int(now.timestamp())
+            logger.info(f"Syncing MeshCore clock to {now.isoformat()}")
+            result = await self.meshcore.commands.set_time(timestamp)
+            return Event(
+                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
+                payload=result.payload if hasattr(result, 'payload') else {}
+            )
+        except Exception as e:
+            logger.error(f"Failed to sync MeshCore clock: {e}")
+            return Event(type="ERROR", payload={"error": str(e)})
 
     async def _resolve_destination(self, destination: str) -> str:
         """

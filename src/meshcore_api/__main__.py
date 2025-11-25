@@ -94,6 +94,10 @@ class Application:
         # Make MeshCore instance available to API routes
         set_meshcore_instance(self.meshcore)
 
+        # Sync device clock and announce presence
+        await self._sync_clock()
+        await self._send_startup_advert()
+
         # Start API server
         logger.info(f"Starting API server on {self.config.api_host}:{self.config.api_port}")
         self.api_server_task = asyncio.create_task(self._run_api_server())
@@ -198,6 +202,36 @@ class Application:
                 if self.config.metrics_enabled:
                     metrics = get_metrics()
                     metrics.record_error("cleanup", "cleanup_failed")
+
+    async def _sync_clock(self) -> None:
+        """Synchronize MeshCore clock with host time."""
+        if not self.meshcore:
+            return
+
+        try:
+            logger.info("Synchronizing MeshCore clock with host time")
+            result = await self.meshcore.sync_clock()
+            if result.type == "ERROR":
+                logger.error(f"Clock sync failed: {result.payload.get('error', result.payload)}")
+            else:
+                logger.info("Clock sync request sent successfully")
+        except Exception as e:
+            logger.error(f"Failed to sync clock: {e}", exc_info=True)
+
+    async def _send_startup_advert(self) -> None:
+        """Send an advertisement during startup."""
+        if not self.meshcore:
+            return
+
+        try:
+            logger.info("Sending startup advertisement")
+            result = await self.meshcore.send_advert(flood=True)
+            if result.type == "ERROR":
+                logger.error(f"Startup advertisement failed: {result.payload.get('error', result.payload)}")
+            else:
+                logger.info("Startup advertisement sent successfully")
+        except Exception as e:
+            logger.error(f"Failed to send startup advertisement: {e}", exc_info=True)
 
     async def run(self) -> None:
         """Run the application until interrupted."""

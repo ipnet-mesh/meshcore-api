@@ -57,16 +57,8 @@ class DatabaseQuery:
             ("node_tags", "Node Tags"),
             ("messages", "Messages"),
             ("advertisements", "Advertisements"),
-            ("paths", "Routing Paths"),
             ("trace_paths", "Trace Paths"),
             ("telemetry", "Telemetry"),
-            ("acknowledgments", "Acknowledgments"),
-            ("status_responses", "Status Responses"),
-            ("statistics", "Statistics"),
-            ("binary_responses", "Binary Responses"),
-            ("control_data", "Control Data"),
-            ("raw_data", "Raw Data"),
-            ("device_info", "Device Info"),
         ]
 
         for table, description in tables:
@@ -169,26 +161,31 @@ class DatabaseQuery:
         print("-" * 80)
 
         self.cursor.execute(
-            "SELECT direction, message_type, from_public_key, to_public_key, "
-            "content, snr, rssi, timestamp, received_at "
+            "SELECT direction, message_type, pubkey_prefix, channel_idx, txt_type, path_len, signature, "
+            "content, snr, sender_timestamp, received_at "
             "FROM messages ORDER BY received_at DESC LIMIT ?",
             (limit,)
         )
         results = self.cursor.fetchall()
 
         if results:
-            for idx, (direction, msg_type, from_key, to_key, content, snr, rssi, ts, recv) in enumerate(results, 1):
+            for idx, (direction, msg_type, pubkey_prefix, channel_idx, txt_type, path_len, signature, content, snr, ts, recv) in enumerate(results, 1):
                 print(f"\n  Message #{idx}")
                 print(f"    Direction: {direction}")
                 print(f"    Type: {msg_type}")
-                print(f"    From: {from_key[:16] if from_key else 'Unknown'}...")
-                if to_key:
-                    print(f"    To: {to_key[:16]}...")
+                if pubkey_prefix:
+                    print(f"    Sender prefix: {pubkey_prefix}")
+                if channel_idx is not None:
+                    print(f"    Channel: {channel_idx}")
+                if txt_type is not None:
+                    print(f"    txt_type: {txt_type}")
+                if path_len is not None:
+                    print(f"    path_len: {path_len}")
+                if signature:
+                    print(f"    signature: {signature}")
                 print(f"    Content: {content[:100]}")
                 if snr is not None:
                     print(f"    SNR: {snr:.1f} dB")
-                if rssi is not None:
-                    print(f"    RSSI: {rssi:.1f} dBm")
                 print(f"    Timestamp: {ts}")
                 print(f"    Received: {recv}")
         else:

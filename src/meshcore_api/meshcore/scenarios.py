@@ -87,12 +87,12 @@ SCENARIOS = {
                 "delay": 5.0,
                 "type": "CONTACT_MSG_RECV",
                 "data": {
-                    "from_public_key": "01ab2186c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1",
-                    "to_public_key": "b3f4e5d6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+                    "pubkey_prefix": "01ab2186c4d5",
+                    "path_len": 3,
+                    "txt_type": 0,
                     "text": "Hello Bob!",
-                    "snr": 15.5,
-                    "rssi": -75.0,
-                    "timestamp": "{{now}}"
+                    "SNR": 15.5,
+                    "sender_timestamp": "{{now}}"
                 }
             },
             {
@@ -107,12 +107,12 @@ SCENARIOS = {
                 "delay": 10.0,
                 "type": "CONTACT_MSG_RECV",
                 "data": {
-                    "from_public_key": "b3f4e5d6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
-                    "to_public_key": "01ab2186c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1",
+                    "pubkey_prefix": "b3f4e5d6a7b8",
+                    "path_len": 2,
+                    "txt_type": 0,
                     "text": "Hi Alice! How are you?",
-                    "snr": 14.8,
-                    "rssi": -78.0,
-                    "timestamp": "{{now}}"
+                    "SNR": 14.8,
+                    "sender_timestamp": "{{now}}"
                 }
             }
         ]
@@ -242,11 +242,12 @@ SCENARIOS = {
                 "delay": 10.0 + i * 1.0,
                 "type": "CHANNEL_MSG_RECV",
                 "data": {
-                    "from_public_key": f"node{i % 10:02d}{'ab' * 30}",
+                    "channel_idx": i % 3,
+                    "path_len": 0,
+                    "txt_type": 0,
                     "text": f"Channel message {i}",
-                    "snr": "{{random_snr}}",
-                    "rssi": "{{random_rssi}}",
-                    "timestamp": "{{now}}"
+                    "SNR": "{{random_snr}}",
+                    "sender_timestamp": "{{now}}"
                 }
             } for i in range(20)]
         ]

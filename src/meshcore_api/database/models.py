@@ -88,17 +88,18 @@ class Message(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     direction: Mapped[str] = mapped_column(String(16), nullable=False)  # inbound/outbound
     message_type: Mapped[str] = mapped_column(String(16), nullable=False)  # contact/channel
-    text_type: Mapped[str] = mapped_column(String(32), default="plain")  # plain/cli_data/signed_plain
-    from_public_key: Mapped[Optional[str]] = mapped_column(String(64), index=True)
-    to_public_key: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+    pubkey_prefix: Mapped[Optional[str]] = mapped_column(String(12), index=True)
+    channel_idx: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    txt_type: Mapped[Optional[int]] = mapped_column(Integer)  # raw meshcore txt_type byte
+    path_len: Mapped[Optional[int]] = mapped_column(Integer)
+    signature: Mapped[Optional[str]] = mapped_column(String(64))
     content: Mapped[str] = mapped_column(Text, nullable=False)
     snr: Mapped[Optional[float]] = mapped_column(Float)
-    rssi: Mapped[Optional[float]] = mapped_column(Float)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    sender_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     __table_args__ = (
-        Index("idx_messages_timestamp", "timestamp"),
+        Index("idx_messages_sender_timestamp", "sender_timestamp"),
     )
 
 
@@ -113,19 +114,6 @@ class Advertisement(Base):
     name: Mapped[Optional[str]] = mapped_column(String(128))
     flags: Mapped[Optional[int]] = mapped_column(Integer)
     received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class Path(Base):
-    """Represents a routing path to a node."""
-
-    __tablename__ = "paths"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    node_public_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    path_data: Mapped[Optional[bytes]] = mapped_column(LargeBinary)  # 64-byte outbound path
-    hop_count: Mapped[Optional[int]] = mapped_column(Integer)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
 
 class TracePath(Base):
@@ -152,89 +140,6 @@ class Telemetry(Base):
     lpp_data: Mapped[Optional[bytes]] = mapped_column(LargeBinary)  # LPP-formatted sensor data
     parsed_data: Mapped[Optional[str]] = mapped_column(Text)  # JSON parsed sensors
     received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class Acknowledgment(Base):
-    """Represents a message acknowledgment with timing."""
-
-    __tablename__ = "acknowledgments"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    message_id: Mapped[Optional[int]] = mapped_column(Integer)  # Reference to messages table
-    destination_public_key: Mapped[Optional[str]] = mapped_column(String(64))
-    round_trip_ms: Mapped[Optional[int]] = mapped_column(Integer)
-    confirmed_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class StatusResponse(Base):
-    """Represents a status response from a node."""
-
-    __tablename__ = "status_responses"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    node_public_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    status_data: Mapped[str] = mapped_column(Text, nullable=False)  # JSON status payload
-    received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class Statistics(Base):
-    """Represents device statistics (core/radio/packets)."""
-
-    __tablename__ = "statistics"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    stat_type: Mapped[str] = mapped_column(String(32), nullable=False)  # core/radio/packets
-    data: Mapped[str] = mapped_column(Text, nullable=False)  # JSON statistics data
-    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class BinaryResponse(Base):
-    """Represents a binary response matched by tag."""
-
-    __tablename__ = "binary_responses"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    tag: Mapped[int] = mapped_column(Integer, nullable=False)  # 32-bit matching tag
-    payload: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class ControlData(Base):
-    """Represents control packet data."""
-
-    __tablename__ = "control_data"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    from_public_key: Mapped[Optional[str]] = mapped_column(String(64), index=True)
-    payload: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class RawData(Base):
-    """Represents raw packet data."""
-
-    __tablename__ = "raw_data"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    from_public_key: Mapped[Optional[str]] = mapped_column(String(64), index=True)
-    payload: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
-
-
-class DeviceInfo(Base):
-    """Represents companion device information and status."""
-
-    __tablename__ = "device_info"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    battery_voltage: Mapped[Optional[float]] = mapped_column(Float)
-    battery_percentage: Mapped[Optional[int]] = mapped_column(Integer)
-    storage_used: Mapped[Optional[int]] = mapped_column(Integer)
-    storage_total: Mapped[Optional[int]] = mapped_column(Integer)
-    device_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    firmware_version: Mapped[Optional[str]] = mapped_column(String(32))
-    capabilities: Mapped[Optional[str]] = mapped_column(Text)  # JSON
-    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
 
 
 class EventLog(Base):

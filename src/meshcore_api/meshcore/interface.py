@@ -59,6 +59,16 @@ class MeshCoreInterface(ABC):
         pass
 
     @abstractmethod
+    async def sync_clock(self) -> Event:
+        """
+        Synchronize MeshCore device clock with host time.
+
+        Returns:
+            Event with sync confirmation
+        """
+        pass
+
+    @abstractmethod
     async def send_message(self, destination: str, text: str, text_type: str = "plain") -> Event:
         """
         Send a direct message to a node.

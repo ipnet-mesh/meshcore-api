@@ -3,19 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from sqlalchemy import delete
-from .models import (
-    Message,
-    Advertisement,
-    Telemetry,
-    TracePath,
-    Acknowledgment,
-    StatusResponse,
-    Statistics,
-    BinaryResponse,
-    ControlData,
-    RawData,
-    EventLog,
-)
+from .models import Message, Advertisement, Telemetry, TracePath, EventLog
 from .engine import session_scope
 
 logger = logging.getLogger(__name__)
@@ -69,42 +57,6 @@ class DataCleanup:
                 delete(TracePath).where(TracePath.completed_at < cutoff_date)
             )
             deleted_counts["trace_paths"] = result.rowcount
-
-            # Cleanup acknowledgments
-            result = session.execute(
-                delete(Acknowledgment).where(Acknowledgment.confirmed_at < cutoff_date)
-            )
-            deleted_counts["acknowledgments"] = result.rowcount
-
-            # Cleanup status responses
-            result = session.execute(
-                delete(StatusResponse).where(StatusResponse.received_at < cutoff_date)
-            )
-            deleted_counts["status_responses"] = result.rowcount
-
-            # Cleanup statistics
-            result = session.execute(
-                delete(Statistics).where(Statistics.recorded_at < cutoff_date)
-            )
-            deleted_counts["statistics"] = result.rowcount
-
-            # Cleanup binary responses
-            result = session.execute(
-                delete(BinaryResponse).where(BinaryResponse.received_at < cutoff_date)
-            )
-            deleted_counts["binary_responses"] = result.rowcount
-
-            # Cleanup control data
-            result = session.execute(
-                delete(ControlData).where(ControlData.received_at < cutoff_date)
-            )
-            deleted_counts["control_data"] = result.rowcount
-
-            # Cleanup raw data
-            result = session.execute(
-                delete(RawData).where(RawData.received_at < cutoff_date)
-            )
-            deleted_counts["raw_data"] = result.rowcount
 
             # Cleanup event log
             result = session.execute(

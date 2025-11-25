@@ -34,20 +34,12 @@ MeshCore companion application that:
 - [x] .gitignore configuration
 
 #### 1.2 Database Layer ✅
-- [x] SQLAlchemy models (14 tables):
-  - `nodes` - Node tracking with prefix indexing
+- [x] SQLAlchemy models (core tables):
+  - `nodes` / `node_tags` - Node tracking with prefix indexing and metadata
   - `messages` - Direct and channel messages
   - `advertisements` - Node advertisements
-  - `paths` - Routing path information
   - `trace_paths` - Trace path results with SNR
   - `telemetry` - Sensor data from nodes
-  - `acknowledgments` - Message confirmations
-  - `status_responses` - Node status data
-  - `statistics` - Device statistics (core/radio/packets)
-  - `binary_responses` - Binary protocol responses
-  - `control_data` - Control packet data
-  - `raw_data` - Raw packet data
-  - `device_info` - Companion device information
   - `events_log` - Raw event log
 - [x] Database engine with connection pooling
 - [x] Session management with context managers
@@ -106,7 +98,7 @@ MeshCore companion application that:
 - [x] Graceful shutdown
 
 ### Test Results ✅
-- Database created with 14 tables
+- Database initialized with core tables
 - Events captured and persisted
 - Mock scenarios working (simple_chat verified)
 - Node tracking functional
@@ -193,8 +185,6 @@ MeshCore companion application that:
 - [x] `GET /api/v1/nodes/{public_key}/messages`
   - Get messages for specific node
   - Filters: date range, pagination
-- [x] `GET /api/v1/nodes/{public_key}/paths`
-  - Get routing paths for node
 - [x] `GET /api/v1/nodes/{public_key}/telemetry`
   - Get telemetry for node
   - Filters: date range, pagination
@@ -526,8 +516,7 @@ MESHCORE_LOG_FORMAT=json
 1. **nodes** - Node tracking with prefix indexing
 2. **messages** - Direct and channel messages
 3. **advertisements** - Node advertisements with GPS
-4. **paths** - Routing path information
-5. **trace_paths** - Trace results with SNR data
+4. **trace_paths** - Trace results with SNR data
 6. **telemetry** - Sensor telemetry data
 7. **acknowledgments** - Message confirmations with timing
 8. **status_responses** - Node status data

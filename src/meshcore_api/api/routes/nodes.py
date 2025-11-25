@@ -6,11 +6,8 @@ from sqlalchemy import desc, asc
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
-from ..schemas import (
-    NodeResponse, NodeListResponse, MessageListResponse,
-    PathListResponse, TelemetryListResponse,
-)
-from ...database.models import Node, Message, Path, Telemetry
+from ..schemas import NodeResponse, NodeListResponse, MessageListResponse, TelemetryListResponse
+from ...database.models import Node, Message, Telemetry
 from ...utils.address import normalize_public_key, validate_public_key
 
 router = APIRouter()
@@ -207,12 +204,15 @@ async def get_node_messages(
     """
     # Resolve prefix to full public key
     normalized_key = resolve_public_key_or_prefix(public_key, db)
+    prefix12 = normalized_key[:12]
 
     # Query messages
-    query = db.query(Message).filter(
-        (Message.from_public_key == normalized_key) |
-        (Message.to_public_key == normalized_key)
-    ).order_by(desc(Message.timestamp))
+    query = (
+        db.query(Message)
+        .filter(Message.message_type == "contact")
+        .filter(Message.pubkey_prefix == prefix12)
+        .order_by(desc(Message.sender_timestamp))
+    )
 
     total = query.count()
     messages = query.limit(limit).offset(offset).all()
@@ -222,43 +222,6 @@ async def get_node_messages(
         total=total,
         limit=limit,
         offset=offset,
-    )
-
-
-@router.get(
-    "/nodes/{public_key}/paths",
-    response_model=PathListResponse,
-    summary="Get routing paths for a node",
-    description="Get all known routing paths to a specific node (supports prefix matching with 2+ characters)",
-)
-async def get_node_paths(
-    public_key: str,
-    db: Session = Depends(get_db),
-) -> PathListResponse:
-    """
-    Get routing paths for a specific node.
-
-    Args:
-        public_key: Node public key (64 hex characters) or prefix (2+ characters)
-        db: Database session
-
-    Returns:
-        List of routing paths
-
-    Raises:
-        HTTPException: If public key/prefix is invalid, not found, or matches multiple nodes
-    """
-    # Resolve prefix to full public key
-    normalized_key = resolve_public_key_or_prefix(public_key, db)
-
-    # Query paths
-    paths = db.query(Path).filter(
-        Path.node_public_key == normalized_key
-    ).order_by(desc(Path.updated_at)).all()
-
-    return PathListResponse(
-        paths=[path.__dict__ for path in paths],
-        total=len(paths),
     )
 
 

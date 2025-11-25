@@ -90,10 +90,6 @@ Data is automatically cleaned up based on the configured retention period (defau
                 "description": "Network trace path results",
             },
             {
-                "name": "statistics",
-                "description": "Device statistics and information",
-            },
-            {
                 "name": "commands",
                 "description": "Send commands to the mesh network",
             },
@@ -180,7 +176,7 @@ Data is automatically cleaned up based on the configured retention period (defau
     # =========================================================================
 
     from .routes import health, nodes, messages, advertisements
-    from .routes import telemetry, trace_paths, statistics, commands, tags
+    from .routes import telemetry, trace_paths, commands, tags
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
     app.include_router(tags.router, prefix="/api/v1", tags=["tags"])
@@ -189,7 +185,6 @@ Data is automatically cleaned up based on the configured retention period (defau
     app.include_router(advertisements.router, prefix="/api/v1", tags=["advertisements"])
     app.include_router(telemetry.router, prefix="/api/v1", tags=["telemetry"])
     app.include_router(trace_paths.router, prefix="/api/v1", tags=["trace_paths"])
-    app.include_router(statistics.router, prefix="/api/v1", tags=["statistics"])
     app.include_router(commands.router, prefix="/api/v1", tags=["commands"])
 
     # =========================================================================
