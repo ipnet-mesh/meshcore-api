@@ -1,13 +1,6 @@
 # Minimal Alpine-based Dockerfile for MeshCore MCP Server
 FROM python:3.11-alpine
 
-# Install build dependencies (needed for some Python packages)
-RUN apk add --no-cache \
-    gcc \
-    musl-dev \
-    linux-headers \
-    && rm -rf /var/cache/apk/*
-
 # Set working directory
 WORKDIR /app
 
@@ -19,10 +12,10 @@ COPY src/ ./src/
 RUN pip install --no-cache-dir -e .
 
 # Expose default port
-EXPOSE 8000
+EXPOSE 8080
 
 # Default command (can be overridden)
-ENTRYPOINT ["python", "-m", "meshcore_api"]
+ENTRYPOINT ["meshcore_api"]
 CMD ["--serial-port", "/dev/ttyUSB0", "--api-port", "8080"]
 
 LABEL org.opencontainers.image.source="https://github.com/ipnet-mesh/meshcore-api"

@@ -1,0 +1,21 @@
+services:
+  meshcore-api:
+    build: .
+    image: ghcr.io/ipnet-mesh/meshcore-api:latest
+    command: ["server"]
+    environment:
+      MESHCORE_API_PORT: "8080"
+      MESHCORE_DB_PATH: "/data/meshcore.db"
+      MESHCORE_LOG_LEVEL: "INFO"
+      MESHCORE_RETENTION_DAYS: "30"
+      MESHCORE_SERIAL_PORT: "/dev/ttyUSB0"  # uncomment and set when using real hardware
+    ports:
+      - "8080:8080"
+    volumes:
+      - data:/data
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"    # needed only when using real hardware
+    restart: unless-stopped
+
+volumes:
+  data:
