@@ -196,27 +196,14 @@ Once running, access interactive API docs at:
 - ReDoc: http://localhost:8000/redoc
 - OpenAPI Schema: http://localhost:8000/openapi.json
 
-## Prometheus Metrics
-
-Metrics available at: http://localhost:8000/metrics
-
 ## Development
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 # Run tests
 pytest
-
-# Format code
-black src/ tests/
-
-# Lint
-ruff check src/ tests/
-
-# Type check
-mypy src/
 ```
 
 ## License
