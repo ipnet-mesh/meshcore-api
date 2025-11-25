@@ -5,6 +5,7 @@ import logging
 import signal
 import sys
 from typing import Optional
+import uvicorn
 
 from .config import Config
 from .database.engine import init_database, session_scope
@@ -14,6 +15,8 @@ from .meshcore import RealMeshCore, MockMeshCore, MeshCoreInterface
 from .subscriber.event_handler import EventHandler
 from .subscriber.metrics import get_metrics
 from .utils.logging import setup_logging
+from .api.app import create_app
+from .api.dependencies import set_meshcore_instance
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +35,7 @@ class Application:
         self.meshcore: Optional[MeshCoreInterface] = None
         self.event_handler: Optional[EventHandler] = None
         self.cleanup_task: Optional[asyncio.Task] = None
+        self.api_server_task: Optional[asyncio.Task] = None
         self.running = False
 
     async def start(self) -> None:
@@ -87,6 +91,13 @@ class Application:
         logger.info("Subscribing to MeshCore events...")
         await self.meshcore.subscribe_to_events(self.event_handler.handle_event)
 
+        # Make MeshCore instance available to API routes
+        set_meshcore_instance(self.meshcore)
+
+        # Start API server
+        logger.info(f"Starting API server on {self.config.api_host}:{self.config.api_port}")
+        self.api_server_task = asyncio.create_task(self._run_api_server())
+
         # Start cleanup task
         if self.config.retention_days > 0:
             logger.info(f"Starting cleanup task (every {self.config.cleanup_interval_hours} hours)")
@@ -99,6 +110,14 @@ class Application:
         """Stop the application."""
         logger.info("Stopping MeshCore Sidekick...")
         self.running = False
+
+        # Cancel API server task
+        if self.api_server_task:
+            self.api_server_task.cancel()
+            try:
+                await self.api_server_task
+            except asyncio.CancelledError:
+                pass
 
         # Cancel cleanup task
         if self.cleanup_task:
@@ -118,6 +137,39 @@ class Application:
             metrics.set_connection_status(False)
 
         logger.info("Application stopped")
+
+    async def _run_api_server(self) -> None:
+        """Run the FastAPI server."""
+        try:
+            # Create FastAPI app
+            app = create_app(
+                title=self.config.api_title,
+                version=self.config.api_version,
+                enable_metrics=self.config.metrics_enabled,
+            )
+
+            # Configure uvicorn
+            config = uvicorn.Config(
+                app,
+                host=self.config.api_host,
+                port=self.config.api_port,
+                log_level="info",
+                access_log=True,
+            )
+
+            server = uvicorn.Server(config)
+
+            # Run server
+            await server.serve()
+
+        except asyncio.CancelledError:
+            logger.info("API server shutting down...")
+            raise
+        except Exception as e:
+            logger.error(f"API server error: {e}", exc_info=True)
+            if self.config.metrics_enabled:
+                metrics = get_metrics()
+                metrics.record_error("api_server", "server_failed")
 
     async def _cleanup_loop(self) -> None:
         """Background task for periodic database cleanup."""
