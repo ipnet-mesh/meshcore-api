@@ -125,9 +125,8 @@ def server(**kwargs):
 @cli.command()
 @click.option(
     "--db-path",
-    type=click.Path(exists=True),
-    default="./data/meshcore.db",
-    help="Path to database file (default: ./data/meshcore.db)",
+    type=click.Path(),
+    help="Path to database file",
 )
 @click.option(
     "--summary",
@@ -196,8 +195,15 @@ def query(db_path, summary, events, nodes, messages, advertisements, telemetry, 
       # Activity in last 6 hours
       meshcore-api query --activity 6
     """
+    # Use Config to resolve db_path with same priority as server command
+    cli_args = {}
+    if db_path is not None:
+        cli_args['db_path'] = db_path
+
+    config = Config.from_args_and_env(cli_args)
+
     try:
-        db = DatabaseQuery(db_path)
+        db = DatabaseQuery(config.db_path)
 
         # If no specific options, show full report
         if not any([summary, events, nodes is not None, messages is not None,
