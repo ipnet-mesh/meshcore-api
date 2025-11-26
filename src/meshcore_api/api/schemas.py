@@ -62,7 +62,7 @@ class MessageResponse(BaseModel):
     id: int
     direction: str
     message_type: str
-    pubkey_prefix: Optional[str] = None
+    sender_public_key: Optional[str] = None  # Full 64-char sender key (contact messages only)
     channel_idx: Optional[int] = None
     txt_type: Optional[int] = None
     path_len: Optional[int] = None
@@ -88,7 +88,7 @@ class MessageListResponse(BaseModel):
 class MessageFilters(BaseModel):
     """Query filters for messages."""
 
-    pubkey_prefix: Optional[str] = Field(None, min_length=2, max_length=12, description="Filter by sender pubkey prefix (contact messages)")
+    sender_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by sender public key prefix (2-64 chars, contact messages only)")
     channel_idx: Optional[int] = Field(None, description="Filter by channel index (channel messages)")
     message_type: Optional[str] = Field(None, description="Filter by message type (contact/channel)")
     start_date: Optional[datetime] = Field(None, description="Filter messages after this sender_timestamp")
@@ -461,3 +461,46 @@ class TagKeysResponse(BaseModel):
 
     keys: List[str]
     total: int
+
+
+# ============================================================================
+# Signal Measurement Schemas
+# ============================================================================
+
+class SignalMeasurementResponse(BaseModel):
+    """Response model for a signal measurement."""
+
+    id: int
+    timestamp: datetime
+    source_public_key: Optional[str] = None  # Full 64-char source public key
+    destination_public_key: Optional[str] = None  # Full 64-char destination public key
+    snr_db: float
+    measurement_type: str
+    hop_index: Optional[int] = None
+    reference_table: str
+    reference_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SignalMeasurementListResponse(BaseModel):
+    """Response model for signal measurement list."""
+
+    measurements: List[SignalMeasurementResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class SignalMeasurementFilters(BaseModel):
+    """Query filters for signal measurements."""
+
+    source_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by source node public key prefix")
+    destination_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by destination node public key prefix")
+    measurement_type: Optional[str] = Field(None, description="Filter by measurement type (message/trace_hop)")
+    min_snr: Optional[float] = Field(None, description="Filter for SNR >= this value")
+    max_snr: Optional[float] = Field(None, description="Filter for SNR <= this value")
+    start_date: Optional[datetime] = Field(None, description="Filter measurements after this timestamp")
+    end_date: Optional[datetime] = Field(None, description="Filter measurements before this timestamp")

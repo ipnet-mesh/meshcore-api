@@ -39,8 +39,9 @@ This API provides access to MeshCore network events and allows sending commands 
 
 ## Features
 
-- **Query Events**: Retrieve messages, advertisements, telemetry, and other network events
-- **Node Management**: List and search nodes by public key prefix
+- **Query Events**: Retrieve messages, advertisements, telemetry, trace paths, and signal measurements
+- **Node Management**: List and search nodes by public key prefix with custom tags
+- **Signal Measurements**: Query SNR (signal strength) data between nodes from messages and trace paths
 - **Send Commands**: Send messages, pings, trace paths, and telemetry requests
 - **Health Monitoring**: Check system and MeshCore connection status
 - **Metrics**: Prometheus metrics endpoint for observability
@@ -96,6 +97,10 @@ Data is automatically cleaned up based on the configured retention period (defau
             {
                 "name": "tags",
                 "description": "Custom node metadata and tags",
+            },
+            {
+                "name": "signal_measurements",
+                "description": "Signal strength (SNR) measurements between nodes",
             },
         ],
     )
@@ -176,7 +181,7 @@ Data is automatically cleaned up based on the configured retention period (defau
     # =========================================================================
 
     from .routes import health, nodes, messages, advertisements
-    from .routes import telemetry, trace_paths, commands, tags
+    from .routes import telemetry, trace_paths, commands, tags, signal_measurements
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
     app.include_router(tags.router, prefix="/api/v1", tags=["tags"])
@@ -186,6 +191,7 @@ Data is automatically cleaned up based on the configured retention period (defau
     app.include_router(telemetry.router, prefix="/api/v1", tags=["telemetry"])
     app.include_router(trace_paths.router, prefix="/api/v1", tags=["trace_paths"])
     app.include_router(commands.router, prefix="/api/v1", tags=["commands"])
+    app.include_router(signal_measurements.router, prefix="/api/v1", tags=["signal_measurements"])
 
     # =========================================================================
     # Prometheus Metrics

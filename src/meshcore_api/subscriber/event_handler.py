@@ -12,6 +12,7 @@ from ..database.models import (
     TracePath,
     Telemetry,
     EventLog,
+    SignalMeasurement,
 )
 from ..database.engine import session_scope
 from ..utils.address import normalize_public_key, extract_prefix
@@ -23,11 +24,23 @@ logger = logging.getLogger(__name__)
 class EventHandler:
     """Handles MeshCore events and persists them to database."""
 
-    def __init__(self, meshcore: Optional[MeshCoreInterface] = None):
+    def __init__(self, meshcore: Optional[MeshCoreInterface] = None, companion_public_key: Optional[str] = None):
         """Initialize event handler."""
         self.event_count = 0
         self.meshcore = meshcore
         self._contact_fetch_inflight = False
+        self.companion_public_key: Optional[str] = (
+            normalize_public_key(companion_public_key) if companion_public_key else None
+        )
+
+    def set_companion_public_key(self, public_key: Optional[str]) -> None:
+        """Configure the companion device public key for prefix resolution."""
+        if not public_key:
+            return
+
+        normalized = normalize_public_key(public_key)
+        self.companion_public_key = normalized
+        logger.info(f"Set companion public key for prefix resolution: {normalized[:8]}...")
 
     async def handle_event(self, event: Event) -> None:
         """
@@ -316,12 +329,29 @@ class EventHandler:
         """Handle CONTACT_MSG_RECV event."""
         payload = event.payload
 
-        # Store message
+        # Resolve sender prefix to full public key
+        pubkey_prefix = payload.get("pubkey_prefix")
+        sender_public_key = None
+
+        if pubkey_prefix:
+            with session_scope() as session:
+                sender_public_key = await self._resolve_prefix_to_key(session, pubkey_prefix)
+                if not sender_public_key:
+                    # Check how many nodes exist
+                    node_count = session.query(Node).count()
+                    logger.warning(
+                        f"Could not resolve sender prefix '{pubkey_prefix}' to full public key "
+                        f"({node_count} nodes in database). Message will be stored without sender identification."
+                    )
+                else:
+                    logger.debug(f"Resolved sender prefix '{pubkey_prefix}' to {sender_public_key[:16]}...")
+
+        # Store message and signal measurement
         with session_scope() as session:
             message = Message(
                 direction="inbound",
                 message_type="contact",
-                pubkey_prefix=payload.get("pubkey_prefix"),
+                sender_public_key=sender_public_key,
                 channel_idx=None,
                 txt_type=payload.get("txt_type"),
                 path_len=payload.get("path_len"),
@@ -331,17 +361,32 @@ class EventHandler:
                 sender_timestamp=self._sender_timestamp(payload.get("sender_timestamp")),
             )
             session.add(message)
+            session.flush()  # Get message.id for reference
+
+            # Create signal measurement if SNR is present and sender resolved
+            snr = payload.get("SNR")
+            if snr is not None and sender_public_key:
+                self._create_signal_measurement(
+                    session=session,
+                    snr_db=snr,
+                    measurement_type="message",
+                    reference_table="messages",
+                    reference_id=message.id,
+                    source_public_key=sender_public_key,  # Sender
+                    destination_public_key=None,  # Receiver is companion device (unknown)
+                    timestamp=message.received_at,
+                )
 
     async def _handle_channel_message(self, event: Event) -> None:
         """Handle CHANNEL_MSG_RECV event."""
         payload = event.payload
 
-        # Store message
+        # Store message (channel messages don't have sender identification)
         with session_scope() as session:
             message = Message(
                 direction="inbound",
                 message_type="channel",
-                pubkey_prefix=None,
+                sender_public_key=None,  # Channel messages are broadcasts
                 channel_idx=payload.get("channel_idx"),
                 txt_type=payload.get("txt_type"),
                 path_len=payload.get("path_len"),
@@ -351,6 +396,12 @@ class EventHandler:
                 sender_timestamp=self._sender_timestamp(payload.get("sender_timestamp")),
             )
             session.add(message)
+
+            # Note: We don't create signal measurements for channel messages because:
+            # - They're broadcasts with no sender identification
+            # - Both source and destination would be NULL
+            # - SNR data without context is not useful for link analysis
+            # The SNR is still stored in the message record for reference
 
     async def _handle_trace_data(self, event: Event) -> None:
         """Handle TRACE_DATA event."""
@@ -375,6 +426,20 @@ class EventHandler:
 
         hop_count = payload.get("hop_count") or path_len or (len(path_hashes) if path_hashes is not None else None)
 
+        # Ensure we have the companion public key cached for prefix resolution
+        if not self.companion_public_key and self.meshcore:
+            try:
+                fetched_key = await self.meshcore.get_companion_public_key()
+                if fetched_key:
+                    self.companion_public_key = normalize_public_key(fetched_key)
+                    logger.info(f"Loaded companion public key for trace resolution: {self.companion_public_key[:8]}...")
+                else:
+                    logger.warning("Companion public key not available from meshcore; trace prefixes may not resolve")
+            except Exception as e:
+                logger.warning(f"Could not load companion public key prior to trace handling: {e}")
+        elif self.companion_public_key:
+            logger.debug(f"Using cached companion public key for trace resolution: {self.companion_public_key[:8]}...")
+
         with session_scope() as session:
             trace = TracePath(
                 initiator_tag=initiator_tag,
@@ -386,6 +451,80 @@ class EventHandler:
                 hop_count=hop_count,
             )
             session.add(trace)
+            session.flush()  # Get trace.id for reference
+
+            # Create signal measurements for each hop in the path
+            # Note: The relationship between path_hashes and snr_values may vary
+            # We'll create measurements for consecutive pairs where both can be resolved
+            if path_hashes and snr_values and len(snr_values) > 0:
+                logger.info(
+                    f"Trace {initiator_tag}: Processing {len(path_hashes)} path nodes "
+                    f"with {len(snr_values)} SNR values - path_hashes={path_hashes}"
+                )
+
+                # Resolve all path hashes to full public keys
+                resolved_keys = []
+                unresolved_hashes = []
+                for hash_prefix in path_hashes:
+                    full_key = await self._resolve_prefix_to_key(session, hash_prefix)
+                    if not full_key:
+                        unresolved_hashes.append(hash_prefix)
+                    resolved_keys.append(full_key)
+
+                # Log unresolved hashes once
+                if unresolved_hashes:
+                    node_count = session.query(Node).count()
+                    logger.warning(
+                        f"Trace {initiator_tag}: Could not resolve {len(unresolved_hashes)} hash(es) "
+                        f"to full public keys: {unresolved_hashes} ({node_count} nodes in database)"
+                    )
+
+                # Create measurements for consecutive node pairs
+                # Only create measurements when BOTH endpoints are resolved
+                max_measurements = min(len(snr_values), len(resolved_keys) - 1)
+                measurements_created = 0
+                measurements_skipped = 0
+
+                for i in range(max_measurements):
+                    source_key = resolved_keys[i]
+                    dest_key = resolved_keys[i + 1]
+
+                    # Only create measurement if BOTH endpoints are resolved
+                    if source_key and dest_key:
+                        self._create_signal_measurement(
+                            session=session,
+                            snr_db=snr_values[i],
+                            measurement_type="trace_hop",
+                            reference_table="trace_paths",
+                            reference_id=trace.id,
+                            source_public_key=source_key,
+                            destination_public_key=dest_key,
+                            hop_index=i,
+                            timestamp=trace.completed_at,
+                        )
+                        measurements_created += 1
+                    else:
+                        measurements_skipped += 1
+                        logger.debug(
+                            f"Trace {initiator_tag} hop {i}: Skipped signal measurement - "
+                            f"source={'resolved' if source_key else 'unresolved'}, "
+                            f"dest={'resolved' if dest_key else 'unresolved'}"
+                        )
+
+                if measurements_created > 0:
+                    logger.info(
+                        f"Trace {initiator_tag}: Created {measurements_created} signal measurement(s), "
+                        f"skipped {measurements_skipped} (unresolved nodes)"
+                    )
+                elif measurements_skipped > 0:
+                    logger.info(
+                        f"Trace {initiator_tag}: Skipped all {measurements_skipped} potential measurement(s) - "
+                        f"nodes not yet in database"
+                    )
+                else:
+                    logger.debug(
+                        f"Trace {initiator_tag}: No signal measurements (insufficient path data)"
+                    )
 
     async def _handle_telemetry(self, event: Event) -> None:
         """Handle TELEMETRY_RESPONSE event."""
@@ -444,3 +583,97 @@ class EventHandler:
             except Exception:
                 logger.warning(f"Failed to parse sender_timestamp '{value}': {e}")
                 return None
+
+    async def _resolve_prefix_to_key(self, session, prefix: Optional[str]) -> Optional[str]:
+        """
+        Resolve a public key prefix to a full public key.
+
+        Args:
+            session: Database session
+            prefix: Public key prefix (2-12 characters)
+
+        Returns:
+            Full 64-character public key if uniquely resolved, None otherwise
+        """
+        if not prefix:
+            return None
+
+        prefix_lower = prefix.lower()
+
+        try:
+            nodes = Node.find_by_prefix(session, prefix_lower)
+            if len(nodes) == 1:
+                return nodes[0].public_key
+            elif len(nodes) > 1:
+                logger.debug(f"Prefix '{prefix}' matches {len(nodes)} nodes - ambiguous resolution")
+                return None
+            else:
+                # If we don't have the companion key cached yet, try to load it now
+                if not self.companion_public_key and self.meshcore:
+                    try:
+                        companion_key = await self.meshcore.get_companion_public_key()  # type: ignore[attr-defined]
+                        if companion_key:
+                            self.companion_public_key = normalize_public_key(companion_key)
+                            logger.info(f"Loaded companion public key for prefix resolution: {self.companion_public_key[:8]}...")
+                    except Exception as e:
+                        logger.debug(f"Could not load companion public key during prefix resolution: {e}")
+
+                # Fall back to companion device if the prefix matches its key
+                if self.companion_public_key and self.companion_public_key.startswith(prefix_lower):
+                    logger.debug(f"Prefix '{prefix}' resolved to companion device public key")
+                    return self.companion_public_key
+
+                logger.debug(f"Prefix '{prefix}' does not match any known nodes")
+                return None
+        except Exception as e:
+            logger.warning(f"Error resolving prefix '{prefix}': {e}")
+            return None
+
+    def _create_signal_measurement(
+        self,
+        session,
+        snr_db: float,
+        measurement_type: str,
+        reference_table: str,
+        reference_id: int,
+        source_public_key: Optional[str] = None,
+        destination_public_key: Optional[str] = None,
+        hop_index: Optional[int] = None,
+        timestamp: Optional[datetime] = None,
+    ) -> None:
+        """
+        Create a signal measurement record.
+
+        Args:
+            session: Database session
+            snr_db: Signal-to-noise ratio in dB
+            measurement_type: Type of measurement ('message' or 'trace_hop')
+            reference_table: Source table name ('messages' or 'trace_paths')
+            reference_id: ID of the source record
+            source_public_key: Full 64-char source node public key (optional)
+            destination_public_key: Full 64-char destination node public key (optional)
+            hop_index: Hop index for trace paths (optional)
+            timestamp: Measurement timestamp (defaults to now)
+        """
+        try:
+            measurement = SignalMeasurement(
+                timestamp=timestamp or datetime.utcnow(),
+                source_public_key=source_public_key,
+                destination_public_key=destination_public_key,
+                snr_db=snr_db,
+                measurement_type=measurement_type,
+                hop_index=hop_index,
+                reference_table=reference_table,
+                reference_id=reference_id,
+            )
+            session.add(measurement)
+
+            source_display = source_public_key[:8] if source_public_key else 'unknown'
+            dest_display = destination_public_key[:8] if destination_public_key else 'unknown'
+            logger.debug(
+                f"Created signal measurement: {measurement_type} "
+                f"from {source_display} to {dest_display}, "
+                f"SNR={snr_db:.1f}dB"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create signal measurement: {e}")

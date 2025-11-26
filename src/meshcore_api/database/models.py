@@ -81,14 +81,18 @@ class NodeTag(Base):
 
 
 class Message(Base):
-    """Represents a direct or channel message."""
+    """Represents a direct or channel message.
+
+    Note: Only full 64-character public keys are stored. Prefix resolution happens at the
+    application layer when processing events.
+    """
 
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     direction: Mapped[str] = mapped_column(String(16), nullable=False)  # inbound/outbound
     message_type: Mapped[str] = mapped_column(String(16), nullable=False)  # contact/channel
-    pubkey_prefix: Mapped[Optional[str]] = mapped_column(String(12), index=True)
+    sender_public_key: Mapped[Optional[str]] = mapped_column(String(64), index=True)  # Full sender key (contact msgs only)
     channel_idx: Mapped[Optional[int]] = mapped_column(Integer, index=True)
     txt_type: Mapped[Optional[int]] = mapped_column(Integer)  # raw meshcore txt_type byte
     path_len: Mapped[Optional[int]] = mapped_column(Integer)
@@ -153,3 +157,48 @@ class EventLog(Base):
     event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     event_data: Mapped[str] = mapped_column(Text, nullable=False)  # JSON full event payload
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
+
+
+class SignalMeasurement(Base):
+    """Signal strength (SNR) measurements between nodes.
+
+    Captures link-level SNR data from:
+    - Direct messages (CONTACT_MSG_RECV)
+    - Channel messages (CHANNEL_MSG_RECV)
+    - Trace path hops (TRACE_DATA)
+
+    For messages, source is the sender and destination is the receiver (usually companion device).
+    For trace paths, each hop represents a link from one node to the next in the path.
+
+    Note: Only full 64-character public keys are stored. Prefix resolution happens at the
+    application layer when processing events.
+    """
+
+    __tablename__ = "signal_measurements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), index=True)
+
+    # Source node (sender or hop origin) - full 64-char public key only
+    source_public_key: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+
+    # Destination node (receiver or hop destination) - full 64-char public key only
+    destination_public_key: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+
+    # SNR measurement
+    snr_db: Mapped[float] = mapped_column(Float, nullable=False)  # Signal-to-noise ratio in dB
+
+    # Metadata
+    measurement_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)  # 'message' or 'trace_hop'
+    hop_index: Mapped[Optional[int]] = mapped_column(Integer)  # For trace_hop, which hop in the path (0-based)
+
+    # Reference to original event
+    reference_table: Mapped[str] = mapped_column(String(32), nullable=False)  # 'messages' or 'trace_paths'
+    reference_id: Mapped[int] = mapped_column(Integer, nullable=False)  # FK to original record
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+
+    __table_args__ = (
+        Index("idx_signal_source_dest", "source_public_key", "destination_public_key"),
+        Index("idx_signal_timestamp", "timestamp"),
+    )

@@ -178,3 +178,13 @@ class MeshCoreInterface(ABC):
             List of Contact objects
         """
         pass
+
+    @abstractmethod
+    async def get_companion_public_key(self) -> Optional[str]:
+        """
+        Get the companion device's public key.
+
+        Returns:
+            64-character public key or None if unavailable
+        """
+        pass

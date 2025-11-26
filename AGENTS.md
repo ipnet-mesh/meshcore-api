@@ -44,6 +44,7 @@ Common options:
 - `--summary`: Show summary statistics only
 - `--nodes N`: Show N discovered nodes
 - `--messages N`: Show N recent messages
+- `--signals N`: Show N recent signal measurements
 - `--activity N`: Show activity timeline for last N hours
 
 ### Tag Command
@@ -93,7 +94,53 @@ The application stores MeshCore event data in SQLite with the following key tabl
 - **advertisements** - Node advertisements
 - **telemetry** - Sensor data from nodes
 - **trace_paths** - Network trace path results
+- **signal_measurements** - SNR (signal strength) measurements between nodes from messages and trace paths
 - **events_log** - Raw event log
+
+## Signal Measurements Feature
+
+The application automatically captures and stores SNR (Signal-to-Noise Ratio) measurements from MeshCore events:
+
+### Event Sources
+- **CONTACT_MSG_RECV** - Direct messages with SNR between sender and receiver
+- **CHANNEL_MSG_RECV** - Channel broadcast messages with SNR
+- **TRACE_DATA** - Multi-hop trace paths with SNR for each hop
+
+### Data Captured
+Each signal measurement includes:
+- **Source/Destination**: Full 64-character node public keys
+- **SNR Value**: Signal strength in dB (decibels)
+- **Measurement Type**: `message` or `trace_hop`
+- **Timestamp**: When the measurement was taken
+- **Reference**: Link back to the original message or trace path
+
+### Public Key Resolution
+- **Database Storage**: Only full 64-character public keys are stored in the database
+- **Event Processing**: Abbreviated prefixes from MeshCore events (2-12 chars) are resolved before storage
+- **Resolution Method**: Uses indexed prefix lookups on `Node` table for performance
+- **Resolution Required**: Signal measurements are only created when BOTH endpoints can be resolved to known nodes
+- **Preserved Data**: Unresolved trace path data is preserved in trace_paths table (path_hashes JSON)
+- **API Layer**: Prefix queries are resolved on-the-fly when filtering measurements
+
+### API Access
+Query signal measurements via REST API:
+- **Endpoint**: `/api/v1/signal-measurements`
+- **Filter by**: source, destination, SNR range, measurement type, date range
+- **Pagination**: Standard limit/offset support
+
+Example queries:
+```bash
+# Get measurements from a specific node
+curl "http://localhost:8000/api/v1/signal-measurements?source_prefix=b3"
+
+# Find weak links (SNR < 10 dB)
+curl "http://localhost:8000/api/v1/signal-measurements?max_snr=10"
+
+# Analyze trace path hop quality
+curl "http://localhost:8000/api/v1/signal-measurements?measurement_type=trace_hop&min_snr=20"
+```
+
+See API documentation at `/docs` for full query options.
 
 ## Node Tags Feature
 

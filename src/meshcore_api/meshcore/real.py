@@ -326,3 +326,22 @@ class RealMeshCore(MeshCoreInterface):
         except Exception as e:
             logger.error(f"Failed to get contacts: {e}", exc_info=True)
             return []
+
+    async def get_companion_public_key(self) -> Optional[str]:
+        """Get the companion device's public key."""
+        if not self.meshcore:
+            raise RuntimeError("Not connected to MeshCore")
+
+        try:
+            # Access self_info property from meshcore_py library
+            self_info = self.meshcore.self_info
+            if self_info and isinstance(self_info, dict):
+                public_key = self_info.get("public_key")
+                if public_key:
+                    logger.debug(f"Retrieved companion public key: {public_key[:8]}...")
+                    return public_key
+            logger.warning("Companion device self_info does not contain public_key")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get companion public key: {e}", exc_info=True)
+            return None

@@ -3,12 +3,12 @@
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
 from ..schemas import MessageListResponse
-from ...database.models import Message
+from ...database.models import Message, Node
 from ...utils.address import normalize_public_key
 
 router = APIRouter()
@@ -21,7 +21,7 @@ router = APIRouter()
     description="Get messages with optional filters for sender prefix, channel, type, and sender timestamp range",
 )
 async def query_messages(
-    pubkey_prefix: Optional[str] = Query(None, min_length=2, max_length=12, description="Filter by sender pubkey prefix (contact messages)"),
+    sender_prefix: Optional[str] = Query(None, min_length=2, max_length=64, description="Filter by sender public key prefix (2-64 chars, contact messages only)"),
     channel_idx: Optional[int] = Query(None, description="Filter by channel index (channel messages)"),
     message_type: Optional[str] = Query(None, description="Filter by message type (contact/channel)"),
     start_date: Optional[datetime] = Query(None, description="Filter messages after this sender_timestamp (ISO 8601)"),
@@ -34,7 +34,7 @@ async def query_messages(
     Query messages with filters.
 
     Args:
-        pubkey_prefix: Filter by sender pubkey prefix (2-12 chars)
+        sender_prefix: Filter by sender public key prefix (2-64 chars)
         channel_idx: Filter by channel index
         message_type: Filter by message type (contact or channel)
         start_date: Only include messages after this sender_timestamp
@@ -49,10 +49,18 @@ async def query_messages(
     # Start with base query
     query = db.query(Message)
 
-    # Apply pubkey_prefix filter
-    if pubkey_prefix:
-        normalized_prefix = normalize_public_key(pubkey_prefix)
-        query = query.filter(Message.pubkey_prefix.like(f"{normalized_prefix}%"))
+    # Apply sender_prefix filter - resolve to full keys
+    if sender_prefix:
+        normalized_prefix = normalize_public_key(sender_prefix)
+        # Find all nodes matching this prefix
+        matching_nodes = Node.find_by_prefix(db, normalized_prefix)
+        if matching_nodes:
+            # Filter messages by any of the matching sender keys
+            sender_keys = [node.public_key for node in matching_nodes]
+            query = query.filter(Message.sender_public_key.in_(sender_keys))
+        else:
+            # No matching nodes - return empty result
+            query = query.filter(Message.sender_public_key == None)
 
     # Apply channel filter
     if channel_idx is not None:

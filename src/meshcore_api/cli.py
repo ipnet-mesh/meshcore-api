@@ -175,12 +175,18 @@ def server(**kwargs):
     help="Show N recent trace paths (default: 5)",
 )
 @click.option(
+    "--signals",
+    type=int,
+    default=None,
+    help="Show N recent signal measurements (default: 20)",
+)
+@click.option(
     "--activity",
     type=int,
     default=None,
     help="Show activity timeline for last N hours (default: 24)",
 )
-def query(db_path, summary, events, nodes, messages, advertisements, telemetry, traces, activity):
+def query(db_path, summary, events, nodes, messages, advertisements, telemetry, traces, signals, activity):
     """Query MeshCore API database.
 
     Examples:
@@ -196,6 +202,9 @@ def query(db_path, summary, events, nodes, messages, advertisements, telemetry, 
 
       # Nodes discovered
       meshcore-api query --nodes 15
+
+      # Signal measurements
+      meshcore-api query --signals 30
 
       # Activity in last 6 hours
       meshcore-api query --activity 6
@@ -213,7 +222,7 @@ def query(db_path, summary, events, nodes, messages, advertisements, telemetry, 
         # If no specific options, show full report
         if not any([summary, events, nodes is not None, messages is not None,
                    advertisements is not None, telemetry is not None,
-                   traces is not None, activity is not None]):
+                   traces is not None, signals is not None, activity is not None]):
             db.print_full_report()
         else:
             # Show requested sections
@@ -237,6 +246,9 @@ def query(db_path, summary, events, nodes, messages, advertisements, telemetry, 
 
             if traces is not None:
                 db.print_trace_paths(traces if traces > 0 else 5)
+
+            if signals is not None:
+                db.print_signal_measurements(signals if signals > 0 else 20)
 
             if activity is not None:
                 db.print_activity_timeline(activity if activity > 0 else 24)

@@ -6,6 +6,7 @@ MeshCore companion application for event collection, persistence, and REST API a
 
 - Subscribe to all MeshCore events via Serial/BLE connection
 - Persist events in SQLite database with configurable retention
+- Signal strength (SNR) tracking for all messages and trace path hops
 - Custom node metadata tags with typed values (strings, numbers, booleans, coordinates)
 - REST API for querying collected data and sending commands
 - Mock MeshCore implementation for development without hardware
@@ -83,6 +84,9 @@ meshcore_api query --telemetry 5
 # Trace paths
 meshcore_api query --traces 5
 
+# Signal measurements (SNR data)
+meshcore_api query --signals 30
+
 # Custom database location
 meshcore_api query --db-path /data/meshcore.db
 ```
@@ -110,10 +114,78 @@ OpenAPI docs are available at `/docs` when the server is running. Core endpoints
 - `GET /api/v1/advertisements` — node adverts
 - `GET /api/v1/telemetry` — telemetry data
 - `GET /api/v1/trace_paths` — trace results (meshcore trace data)
+- `GET /api/v1/signal-measurements` — SNR (signal strength) measurements between nodes
 - `GET /api/v1/nodes` and `/api/v1/nodes/{public_key}` — node info
 - `PUT/POST /api/v1/nodes/{public_key}/tags` — node tags
 - `POST /api/v1/commands/*` — send messages, channel messages, adverts, trace, telemetry requests
 - `GET /api/v1/health` — health/status
+
+## Signal Measurements
+
+The API automatically captures and stores SNR (Signal-to-Noise Ratio) measurements from MeshCore events, providing detailed signal strength data for network analysis.
+
+### What is Captured
+
+Signal measurements are extracted from:
+
+- **Direct Messages** (CONTACT_MSG_RECV): SNR between sender and receiver
+- **Channel Messages** (CHANNEL_MSG_RECV): SNR for broadcast messages
+- **Trace Path Hops** (TRACE_DATA): SNR for each hop in multi-node traces
+
+Each measurement includes:
+- Source and destination node public keys (full 64-character addresses)
+- SNR value in dB (decibels)
+- Timestamp
+- Measurement type (message or trace_hop)
+- Reference to the original event (message or trace path)
+
+**Note**: Only full 64-character public keys are stored in the database. When events contain abbreviated prefixes (2-12 characters), they are automatically resolved to full public keys before storage. Signal measurements are **only created when both endpoints can be resolved** - measurements for unknown nodes are skipped until those nodes advertise themselves to the network.
+
+### Querying Signal Measurements
+
+```bash
+# Get all signal measurements (paginated)
+curl "http://localhost:8000/api/v1/signal-measurements?limit=100"
+
+# Filter by source node
+curl "http://localhost:8000/api/v1/signal-measurements?source_prefix=b3"
+
+# Filter by destination node
+curl "http://localhost:8000/api/v1/signal-measurements?destination_prefix=fa"
+
+# Filter by both source and destination
+curl "http://localhost:8000/api/v1/signal-measurements?source_prefix=b3&destination_prefix=fa"
+
+# Filter by SNR range (good signals only: >= 20 dB)
+curl "http://localhost:8000/api/v1/signal-measurements?min_snr=20"
+
+# Filter by measurement type
+curl "http://localhost:8000/api/v1/signal-measurements?measurement_type=trace_hop"
+
+# Filter by date range
+curl "http://localhost:8000/api/v1/signal-measurements?start_date=2025-11-01T00:00:00Z&end_date=2025-11-30T23:59:59Z"
+
+# Combined filters: trace hops with good signal from specific source
+curl "http://localhost:8000/api/v1/signal-measurements?source_prefix=b3&measurement_type=trace_hop&min_snr=15"
+```
+
+### Public Key Resolution
+
+The API handles public key prefix resolution automatically:
+
+- **Database Storage**: Only full 64-character public keys are stored
+- **Event Processing**: Abbreviated prefixes from MeshCore events (2-12 chars) are resolved to full keys before storage
+- **API Queries**: Filter parameters accept any prefix length (2-64 chars), which are resolved on-the-fly
+- **Ambiguous Prefixes**: If a prefix matches multiple nodes, all matching nodes are included in results
+- **Unresolved Prefixes**: Measurements are skipped for unknown nodes until they advertise (trace path data is preserved in trace_paths table)
+
+### Use Cases
+
+- **Link Quality Analysis**: Track SNR between specific node pairs over time
+- **Network Health**: Identify weak links or degraded connections
+- **Path Optimization**: Compare SNR across different routes in trace data
+- **Coverage Mapping**: Visualize signal strength across the mesh network
+- **Troubleshooting**: Investigate connectivity issues by examining historical SNR data
 
 ## Node Tags
 

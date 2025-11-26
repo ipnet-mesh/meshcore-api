@@ -320,7 +320,8 @@ class MockMeshCore(MeshCoreInterface):
 
         elif event_type == "TRACE_DATA":
             hop_count = random.randint(1, 5)
-            path_hashes = [node["public_key"][:2] for _ in range(hop_count)]
+            # Always include companion device "23" as first hop
+            path_hashes = ["23"] + [random.choice(self._simulated_nodes)["public_key"][:2] for _ in range(hop_count - 1)]
             snr_values = [random.uniform(10, 50) for _ in range(hop_count)]
             return Event(
                 type="TRACE_DATA",
@@ -511,3 +512,11 @@ class MockMeshCore(MeshCoreInterface):
             )
             contacts.append(contact)
         return contacts
+
+    async def get_companion_public_key(self) -> Optional[str]:
+        """Get the companion device's public key (mock)."""
+        # Return a fixed mock companion public key starting with "23" for testing
+        # This matches the typical 2-char hash prefix seen in trace data
+        companion_key = "23" + ("0" * 62)  # 64-char key starting with "23"
+        logger.debug(f"Mock: Retrieved companion public key: {companion_key[:8]}...")
+        return companion_key

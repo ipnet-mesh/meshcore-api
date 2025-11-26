@@ -2,14 +2,12 @@
 
 import asyncio
 import logging
-import signal
 import sys
 from typing import Optional
 import uvicorn
 
 from .config import Config
-from .database.engine import init_database, session_scope
-from .database.models import Node, Advertisement
+from .database.engine import init_database
 from .database.cleanup import DataCleanup
 from .meshcore import RealMeshCore, MockMeshCore, MeshCoreInterface
 from .subscriber.event_handler import EventHandler
@@ -38,6 +36,7 @@ class Application:
         self.cleanup_task: Optional[asyncio.Task] = None
         self.metrics_task: Optional[asyncio.Task] = None
         self.api_server_task: Optional[asyncio.Task] = None
+        self.companion_public_key: Optional[str] = None
         self.running = False
 
     async def start(self) -> None:
@@ -86,8 +85,14 @@ class Application:
         if self.config.metrics_enabled:
             metrics.set_connection_status(True)
 
+        # Retrieve companion public key for in-memory resolution
+        self.companion_public_key = await self._fetch_companion_public_key()
+
         # Initialize event handler (needs meshcore for contact lookups)
-        self.event_handler = EventHandler(meshcore=self.meshcore)
+        self.event_handler = EventHandler(
+            meshcore=self.meshcore,
+            companion_public_key=self.companion_public_key,
+        )
 
         # Subscribe to events
         logger.info("Subscribing to MeshCore events...")
@@ -241,6 +246,26 @@ class Application:
                 logger.error(f"Error in metrics loop: {e}", exc_info=True)
                 metrics = get_metrics()
                 metrics.record_error("metrics_updater", "update_loop_failed")
+
+    async def _fetch_companion_public_key(self) -> Optional[str]:
+        """Fetch the companion device public key for in-memory prefix resolution."""
+        if not self.meshcore:
+            return None
+
+        try:
+            logger.info("Retrieving companion device public key for prefix resolution...")
+            companion_key = await self.meshcore.get_companion_public_key()
+
+            if not companion_key:
+                logger.warning("Could not retrieve companion device public key")
+                return None
+
+            logger.info(f"Companion device public key loaded: {companion_key[:8]}...")
+            return companion_key
+
+        except Exception as e:
+            logger.error(f"Failed to load companion device public key: {e}", exc_info=True)
+            return None
 
     async def _sync_clock(self) -> None:
         """Synchronize MeshCore clock with host time."""

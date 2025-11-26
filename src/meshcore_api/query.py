@@ -59,6 +59,7 @@ class DatabaseQuery:
             ("advertisements", "Advertisements"),
             ("trace_paths", "Trace Paths"),
             ("telemetry", "Telemetry"),
+            ("signal_measurements", "Signal Measurements"),
         ]
 
         for table, description in tables:
@@ -161,7 +162,7 @@ class DatabaseQuery:
         print("-" * 80)
 
         self.cursor.execute(
-            "SELECT direction, message_type, pubkey_prefix, channel_idx, txt_type, path_len, signature, "
+            "SELECT direction, message_type, sender_public_key, channel_idx, txt_type, path_len, signature, "
             "content, snr, sender_timestamp, received_at "
             "FROM messages ORDER BY received_at DESC LIMIT ?",
             (limit,)
@@ -169,12 +170,12 @@ class DatabaseQuery:
         results = self.cursor.fetchall()
 
         if results:
-            for idx, (direction, msg_type, pubkey_prefix, channel_idx, txt_type, path_len, signature, content, snr, ts, recv) in enumerate(results, 1):
+            for idx, (direction, msg_type, sender_key, channel_idx, txt_type, path_len, signature, content, snr, ts, recv) in enumerate(results, 1):
                 print(f"\n  Message #{idx}")
                 print(f"    Direction: {direction}")
                 print(f"    Type: {msg_type}")
-                if pubkey_prefix:
-                    print(f"    Sender prefix: {pubkey_prefix}")
+                if sender_key:
+                    print(f"    Sender: {sender_key[:16]}...")
                 if channel_idx is not None:
                     print(f"    Channel: {channel_idx}")
                 if txt_type is not None:
@@ -286,6 +287,47 @@ class DatabaseQuery:
         else:
             print("  No trace paths recorded")
 
+    def print_signal_measurements(self, limit: int = 20):
+        """Print recent signal measurements."""
+        print("\n" + "-" * 80)
+        print(f"SIGNAL MEASUREMENTS (last {limit})")
+        print("-" * 80)
+
+        self.cursor.execute(
+            "SELECT timestamp, source_public_key, destination_public_key, snr_db, "
+            "measurement_type, hop_index, reference_table, reference_id "
+            "FROM signal_measurements ORDER BY timestamp DESC LIMIT ?",
+            (limit,)
+        )
+        results = self.cursor.fetchall()
+
+        if results:
+            for idx, (timestamp, src_key, dst_key, snr, mtype, hop_idx, ref_table, ref_id) in enumerate(results, 1):
+                print(f"\n  Measurement #{idx}")
+                print(f"    Timestamp: {timestamp}")
+                print(f"    Type: {mtype}")
+
+                # Display source
+                if src_key:
+                    print(f"    Source: {src_key[:16]}...")
+                else:
+                    print(f"    Source: Unknown")
+
+                # Display destination
+                if dst_key:
+                    print(f"    Destination: {dst_key[:16]}...")
+                else:
+                    print(f"    Destination: Unknown")
+
+                print(f"    SNR: {snr:.1f} dB")
+
+                if hop_idx is not None:
+                    print(f"    Hop Index: {hop_idx}")
+
+                print(f"    Reference: {ref_table} #{ref_id}")
+        else:
+            print("  No signal measurements recorded")
+
     def print_activity_timeline(self, hours: int = 24):
         """Print activity timeline."""
         print("\n" + "-" * 80)
@@ -325,6 +367,7 @@ class DatabaseQuery:
         self.print_advertisements()
         self.print_telemetry()
         self.print_trace_paths()
+        self.print_signal_measurements()
         print("\n" + "=" * 80)
 
 
@@ -349,6 +392,9 @@ Examples:
 
   # Activity in last 6 hours
   python -m meshcore_api.query --activity 6
+
+  # Signal measurements
+  python -m meshcore_api.query --signals 30
         """
     )
 
@@ -410,6 +456,14 @@ Examples:
         help="Show N recent trace paths (default: 5)"
     )
     parser.add_argument(
+        "--signals",
+        type=int,
+        metavar="N",
+        nargs="?",
+        const=20,
+        help="Show N recent signal measurements (default: 20)"
+    )
+    parser.add_argument(
         "--activity",
         type=int,
         metavar="HOURS",
@@ -432,6 +486,7 @@ Examples:
             args.advertisements is not None,
             args.telemetry is not None,
             args.traces is not None,
+            args.signals is not None,
             args.activity is not None,
         ]):
             db.print_full_report()
@@ -457,6 +512,9 @@ Examples:
 
             if args.traces is not None:
                 db.print_trace_paths(args.traces)
+
+            if args.signals is not None:
+                db.print_signal_measurements(args.signals)
 
             if args.activity is not None:
                 db.print_activity_timeline(args.activity)
