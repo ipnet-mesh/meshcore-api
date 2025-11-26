@@ -37,6 +37,7 @@ class NodeResponse(BaseModel):
     last_seen: Optional[datetime] = None
     first_seen: datetime
     created_at: datetime
+    tags: dict = Field(default_factory=dict, description="Node tags as key-value pairs")
 
     class Config:
         from_attributes = True

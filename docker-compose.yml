@@ -9,6 +9,7 @@ services:
       MESHCORE_LOG_LEVEL: "INFO"
       MESHCORE_RETENTION_DAYS: "30"
       MESHCORE_SERIAL_PORT: "/dev/ttyUSB0"  # uncomment and set when using real hardware
+      ENABLE_METRICS: "true"
     ports:
       - "8080:8080"
     volumes:

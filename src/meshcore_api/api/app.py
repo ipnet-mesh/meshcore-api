@@ -195,10 +195,9 @@ Data is automatically cleaned up based on the configured retention period (defau
         instrumentator = Instrumentator(
             should_group_status_codes=True,
             should_ignore_untemplated=True,
-            should_respect_env_var=True,
+            should_respect_env_var=False,  # Don't require ENABLE_METRICS env var
             should_instrument_requests_inprogress=True,
             excluded_handlers=["/metrics"],
-            env_var_name="ENABLE_METRICS",
             inprogress_name="fastapi_inprogress",
             inprogress_labels=True,
         )

@@ -14,6 +14,7 @@ from .database.cleanup import DataCleanup
 from .meshcore import RealMeshCore, MockMeshCore, MeshCoreInterface
 from .subscriber.event_handler import EventHandler
 from .subscriber.metrics import get_metrics
+from .subscriber.metrics_updater import update_database_metrics
 from .utils.logging import setup_logging
 from .api.app import create_app
 from .api.dependencies import set_meshcore_instance, set_config_instance
@@ -35,6 +36,7 @@ class Application:
         self.meshcore: Optional[MeshCoreInterface] = None
         self.event_handler: Optional[EventHandler] = None
         self.cleanup_task: Optional[asyncio.Task] = None
+        self.metrics_task: Optional[asyncio.Task] = None
         self.api_server_task: Optional[asyncio.Task] = None
         self.running = False
 
@@ -111,6 +113,11 @@ class Application:
             logger.info(f"Starting cleanup task (every {self.config.cleanup_interval_hours} hours)")
             self.cleanup_task = asyncio.create_task(self._cleanup_loop())
 
+        # Start metrics update task
+        if self.config.metrics_enabled:
+            logger.info("Starting metrics update task (every 30 seconds)")
+            self.metrics_task = asyncio.create_task(self._metrics_loop())
+
         self.running = True
         logger.info("Application started successfully")
 
@@ -132,6 +139,14 @@ class Application:
             self.cleanup_task.cancel()
             try:
                 await self.cleanup_task
+            except asyncio.CancelledError:
+                pass
+
+        # Cancel metrics task
+        if self.metrics_task:
+            self.metrics_task.cancel()
+            try:
+                await self.metrics_task
             except asyncio.CancelledError:
                 pass
 
@@ -206,6 +221,26 @@ class Application:
                 if self.config.metrics_enabled:
                     metrics = get_metrics()
                     metrics.record_error("cleanup", "cleanup_failed")
+
+    async def _metrics_loop(self) -> None:
+        """Background task for periodic metrics updates."""
+        # Update metrics immediately on startup
+        update_database_metrics(self.config.db_path)
+
+        while self.running:
+            try:
+                # Wait for interval (30 seconds)
+                await asyncio.sleep(30)
+
+                # Update metrics
+                update_database_metrics(self.config.db_path)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in metrics loop: {e}", exc_info=True)
+                metrics = get_metrics()
+                metrics.record_error("metrics_updater", "update_loop_failed")
 
     async def _sync_clock(self) -> None:
         """Synchronize MeshCore clock with host time."""

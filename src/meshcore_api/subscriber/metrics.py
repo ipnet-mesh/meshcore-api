@@ -125,6 +125,29 @@ class MetricsCollector:
             ['table']
         )
 
+        # Tag metrics
+        self.nodes_by_area = Gauge(
+            'meshcore_nodes_by_area',
+            'Number of nodes by area',
+            ['area']
+        )
+
+        self.nodes_by_role = Gauge(
+            'meshcore_nodes_by_role',
+            'Number of nodes by mesh role',
+            ['role']
+        )
+
+        self.nodes_online = Gauge(
+            'meshcore_nodes_online',
+            'Number of nodes currently online (based on is_online tag)'
+        )
+
+        self.nodes_with_tags = Gauge(
+            'meshcore_nodes_with_tags',
+            'Number of nodes that have at least one tag'
+        )
+
         # Application health
         self.connection_status = Gauge(
             'meshcore_connection_status',

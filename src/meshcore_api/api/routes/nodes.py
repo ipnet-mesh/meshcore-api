@@ -6,11 +6,41 @@ from sqlalchemy import desc, asc
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
-from ..schemas import NodeResponse, NodeListResponse, MessageListResponse, TelemetryListResponse
-from ...database.models import Node, Message, Telemetry
+from ..schemas import NodeResponse, NodeListResponse, MessageListResponse, TelemetryListResponse, CoordinateValue
+from ...database.models import Node, Message, Telemetry, NodeTag
 from ...utils.address import normalize_public_key, validate_public_key
 
 router = APIRouter()
+
+
+def get_node_tags_dict(node_public_key: str, db: Session) -> dict:
+    """
+    Get all tags for a node as a dictionary.
+
+    Args:
+        node_public_key: Node public key
+        db: Database session
+
+    Returns:
+        Dictionary mapping tag keys to values
+    """
+    tags = db.query(NodeTag).filter(NodeTag.node_public_key == node_public_key).all()
+
+    result = {}
+    for tag in tags:
+        if tag.value_type == 'string':
+            result[tag.key] = tag.value_string
+        elif tag.value_type == 'number':
+            result[tag.key] = tag.value_number
+        elif tag.value_type == 'boolean':
+            result[tag.key] = tag.value_boolean
+        elif tag.value_type == 'coordinate':
+            result[tag.key] = {
+                "latitude": tag.latitude,
+                "longitude": tag.longitude
+            }
+
+    return result
 
 
 def resolve_public_key_or_prefix(prefix: str, db: Session) -> str:
@@ -118,8 +148,23 @@ async def list_nodes(
     # Apply pagination
     nodes = query.limit(limit).offset(offset).all()
 
+    # Convert nodes to response models with tags
+    node_responses = []
+    for node in nodes:
+        node_dict = {
+            "id": node.id,
+            "public_key": node.public_key,
+            "node_type": node.node_type,
+            "name": node.name,
+            "last_seen": node.last_seen,
+            "first_seen": node.first_seen,
+            "created_at": node.created_at,
+            "tags": get_node_tags_dict(node.public_key, db)
+        }
+        node_responses.append(NodeResponse(**node_dict))
+
     return NodeListResponse(
-        nodes=[NodeResponse.model_validate(node) for node in nodes],
+        nodes=node_responses,
         total=total,
         limit=limit,
         offset=offset,
@@ -167,8 +212,23 @@ async def search_nodes_by_prefix(
     # Use the optimized prefix search method
     nodes = Node.find_by_prefix(db, normalized_prefix)
 
+    # Convert nodes to response models with tags
+    node_responses = []
+    for node in nodes:
+        node_dict = {
+            "id": node.id,
+            "public_key": node.public_key,
+            "node_type": node.node_type,
+            "name": node.name,
+            "last_seen": node.last_seen,
+            "first_seen": node.first_seen,
+            "created_at": node.created_at,
+            "tags": get_node_tags_dict(node.public_key, db)
+        }
+        node_responses.append(NodeResponse(**node_dict))
+
     return NodeListResponse(
-        nodes=[NodeResponse.model_validate(node) for node in nodes],
+        nodes=node_responses,
         total=len(nodes),
         limit=len(nodes),
         offset=0,
