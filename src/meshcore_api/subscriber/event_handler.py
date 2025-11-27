@@ -316,12 +316,17 @@ class EventHandler:
         """Handle CONTACT_MSG_RECV event."""
         payload = event.payload
 
+        # Normalize pubkey_prefix to lowercase for consistency
+        pubkey_prefix = payload.get("pubkey_prefix")
+        if pubkey_prefix:
+            pubkey_prefix = pubkey_prefix.lower()
+
         # Store message
         with session_scope() as session:
             message = Message(
                 direction="inbound",
                 message_type="contact",
-                pubkey_prefix=payload.get("pubkey_prefix"),
+                pubkey_prefix=pubkey_prefix,
                 channel_idx=None,
                 txt_type=payload.get("txt_type"),
                 path_len=payload.get("path_len"),
@@ -364,6 +369,10 @@ class EventHandler:
         path_hashes = payload.get("path_hashes")
         if path_hashes is None and "path" in payload:
             path_hashes = [hop.get("hash") for hop in payload.get("path", []) if hop.get("hash") is not None]
+
+        # Normalize path hashes to lowercase for consistency
+        if path_hashes:
+            path_hashes = [h.lower() if h else h for h in path_hashes]
 
         snr_values = payload.get("snr_values")
         if snr_values is None and "path" in payload:

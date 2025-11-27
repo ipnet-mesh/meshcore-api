@@ -2,14 +2,14 @@
 
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
 from ..schemas import AdvertisementListResponse
-from ...database.models import Advertisement, Node
-from ...utils.address import normalize_public_key
+from ...database.models import Advertisement
+from ...utils.address import normalize_public_key, validate_public_key
 
 router = APIRouter()
 
@@ -18,10 +18,10 @@ router = APIRouter()
     "/advertisements",
     response_model=AdvertisementListResponse,
     summary="Query advertisements",
-    description="Get node advertisements with optional filters for node, type, and date range",
+    description="Get node advertisements with optional filters for node public key (full 64 chars), type, and date range",
 )
 async def query_advertisements(
-    node_prefix: Optional[str] = Query(None, min_length=2, max_length=64, description="Filter by node public key prefix"),
+    node_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by node public key (full 64 hex characters)"),
     adv_type: Optional[str] = Query(None, description="Filter by advertisement type (none/chat/repeater/room)"),
     start_date: Optional[datetime] = Query(None, description="Filter advertisements after this date (ISO 8601)"),
     end_date: Optional[datetime] = Query(None, description="Filter advertisements before this date (ISO 8601)"),
@@ -33,7 +33,7 @@ async def query_advertisements(
     Query advertisements with filters.
 
     Args:
-        node_prefix: Filter by node public key prefix (2-64 chars)
+        node_public_key: Filter by node public key (must be exactly 64 hex characters)
         adv_type: Filter by advertisement type
         start_date: Only include advertisements after this timestamp
         end_date: Only include advertisements before this timestamp
@@ -47,22 +47,20 @@ async def query_advertisements(
     # Start with base query
     query = db.query(Advertisement)
 
-    # Apply node_prefix filter
-    if node_prefix:
-        normalized_prefix = normalize_public_key(node_prefix)
-        # Find all nodes matching the prefix
-        matching_nodes = Node.find_by_prefix(db, normalized_prefix)
-        if matching_nodes:
-            node_keys = [node.public_key for node in matching_nodes]
-            query = query.filter(Advertisement.public_key.in_(node_keys))
-        else:
-            # No matching nodes, return empty result
-            return AdvertisementListResponse(
-                advertisements=[],
-                total=0,
-                limit=limit,
-                offset=offset,
+    # Apply node_public_key filter
+    if node_public_key:
+        # Validate and normalize the full public key
+        try:
+            normalized_key = normalize_public_key(node_public_key)
+            if not validate_public_key(normalized_key, allow_prefix=False):
+                raise ValueError("Invalid public key length")
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="node_public_key must be exactly 64 hexadecimal characters",
             )
+        # Use full key for query (advertisements table stores full 64-char keys)
+        query = query.filter(Advertisement.public_key == normalized_key)
 
     # Apply adv_type filter
     if adv_type:
