@@ -19,59 +19,37 @@ from ...utils.address import normalize_public_key, extract_prefix
 router = APIRouter()
 
 
-def resolve_public_key_or_prefix(prefix: str, db: Session, allow_create: bool = False) -> str:
+def validate_full_public_key(public_key: str) -> str:
     """
-    Resolve a public key or prefix to a full public key.
+    Validate and normalize a full 64-character public key.
 
     Args:
-        prefix: Public key (64 chars) or prefix (2+ chars)
-        db: Database session
-        allow_create: If True, allows returning full keys even if node doesn't exist
+        public_key: Public key (must be exactly 64 hex characters)
 
     Returns:
-        Full public key (64 hex characters)
+        Normalized full public key (64 hex characters, lowercase)
 
     Raises:
-        HTTPException: If prefix is invalid, no match found, or multiple matches
+        HTTPException: If public key is invalid
     """
     from ...utils.address import validate_public_key
 
-    # Validate prefix length
-    if len(prefix) < 2:
+    # Validate length
+    if len(public_key) != 64:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Public key or prefix must be at least 2 characters",
+            detail="Public key must be exactly 64 hexadecimal characters. Use /nodes/{prefix} to resolve partial keys.",
         )
 
-    # Normalize prefix
-    normalized_prefix = normalize_public_key(prefix)
-    if not validate_public_key(normalized_prefix, allow_prefix=True):
+    # Normalize and validate hex characters
+    normalized_key = normalize_public_key(public_key)
+    if not validate_public_key(normalized_key, allow_prefix=False):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Public key or prefix must contain only hexadecimal characters",
+            detail="Public key must contain only hexadecimal characters",
         )
 
-    # If it's already 64 characters, return it (node will be created if needed)
-    if len(normalized_prefix) == 64:
-        return normalized_prefix
-
-    # Otherwise, resolve the prefix (must exist for prefixes)
-    nodes = Node.find_by_prefix(db, normalized_prefix)
-
-    if not nodes:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No node found matching prefix '{prefix}'",
-        )
-
-    if len(nodes) > 1:
-        matching_keys = [node.public_key[:8] + "..." for node in nodes[:5]]
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Prefix '{prefix}' matches {len(nodes)} nodes: {', '.join(matching_keys)}. Please use a longer prefix.",
-        )
-
-    return nodes[0].public_key
+    return normalized_key
 
 
 def db_model_to_response(tag: NodeTag) -> NodeTagResponse:
@@ -168,7 +146,7 @@ def create_or_update_tag(db: Session, node_public_key: str, tag_request: TagValu
     "/nodes/{public_key}/tags",
     response_model=NodeTagListResponse,
     summary="Get all tags for a node",
-    description="Get all custom metadata tags for a specific node with pagination",
+    description="Get all custom metadata tags for a specific node (requires full 64-character public key)",
 )
 async def get_node_tags(
     public_key: str,
@@ -180,7 +158,7 @@ async def get_node_tags(
     Get all tags for a node.
 
     Args:
-        public_key: Node public key or prefix
+        public_key: Node public key (must be exactly 64 hex characters)
         limit: Maximum number of tags to return
         offset: Number of tags to skip for pagination
         db: Database session
@@ -188,11 +166,11 @@ async def get_node_tags(
     Returns:
         List of tags with pagination info
     """
-    # Resolve public key
-    resolved_key = resolve_public_key_or_prefix(public_key, db)
+    # Validate full public key
+    normalized_key = validate_full_public_key(public_key)
 
     # Query tags
-    query = db.query(NodeTag).filter(NodeTag.node_public_key == resolved_key)
+    query = db.query(NodeTag).filter(NodeTag.node_public_key == normalized_key)
     total = query.count()
     tags = query.order_by(NodeTag.key).limit(limit).offset(offset).all()
 
@@ -211,7 +189,7 @@ async def get_node_tags(
     "/nodes/{public_key}/tags/{key}",
     response_model=NodeTagResponse,
     summary="Get a specific tag",
-    description="Get the value of a specific tag for a node",
+    description="Get the value of a specific tag for a node (requires full 64-character public key)",
 )
 async def get_node_tag(
     public_key: str,
@@ -222,26 +200,26 @@ async def get_node_tag(
     Get a specific tag for a node.
 
     Args:
-        public_key: Node public key or prefix
+        public_key: Node public key (must be exactly 64 hex characters)
         key: Tag key
         db: Database session
 
     Returns:
         Tag value and metadata
     """
-    # Resolve public key
-    resolved_key = resolve_public_key_or_prefix(public_key, db)
+    # Validate full public key
+    normalized_key = validate_full_public_key(public_key)
 
     # Query tag
     tag = db.query(NodeTag).filter_by(
-        node_public_key=resolved_key,
+        node_public_key=normalized_key,
         key=key
     ).first()
 
     if not tag:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tag '{key}' not found for node {resolved_key[:8]}...",
+            detail=f"Tag '{key}' not found for node {normalized_key[:8]}...",
         )
 
     return db_model_to_response(tag)
@@ -251,7 +229,7 @@ async def get_node_tag(
     "/nodes/{public_key}/tags/{key}",
     response_model=NodeTagResponse,
     summary="Set or update a tag",
-    description="Set or update a single tag for a node (upsert operation)",
+    description="Set or update a single tag for a node (requires full 64-character public key)",
     dependencies=[Depends(check_write_enabled)],
 )
 async def set_node_tag(
@@ -264,7 +242,7 @@ async def set_node_tag(
     Set or update a tag for a node.
 
     Args:
-        public_key: Node public key or prefix
+        public_key: Node public key (must be exactly 64 hex characters)
         key: Tag key (from URL path)
         tag_value: Tag value and type (without key)
         db: Database session
@@ -272,11 +250,11 @@ async def set_node_tag(
     Returns:
         Updated tag
     """
-    # Resolve public key
-    resolved_key = resolve_public_key_or_prefix(public_key, db)
+    # Validate full public key
+    normalized_key = validate_full_public_key(public_key)
 
-    # Ensure node exists
-    ensure_node_exists(db, resolved_key)
+    # Ensure node exists (will create if it doesn't)
+    ensure_node_exists(db, normalized_key)
 
     # Create TagValueRequest with key from URL
     tag_request = TagValueRequest(
@@ -286,7 +264,7 @@ async def set_node_tag(
     )
 
     # Create or update tag
-    tag = create_or_update_tag(db, resolved_key, tag_request)
+    tag = create_or_update_tag(db, normalized_key, tag_request)
     db.commit()
     db.refresh(tag)
 
@@ -297,7 +275,7 @@ async def set_node_tag(
     "/nodes/{public_key}/tags/bulk",
     response_model=BulkTagUpdateResponse,
     summary="Bulk update tags",
-    description="Update multiple tags on a single node in one atomic transaction",
+    description="Update multiple tags on a single node (requires full 64-character public key)",
     dependencies=[Depends(check_write_enabled)],
 )
 async def bulk_update_tags(
@@ -309,7 +287,7 @@ async def bulk_update_tags(
     Bulk update multiple tags on a node.
 
     Args:
-        public_key: Node public key or prefix
+        public_key: Node public key (must be exactly 64 hex characters)
         request: List of tags to update
         db: Database session
 
@@ -317,16 +295,16 @@ async def bulk_update_tags(
         Success status and updated tags
     """
     try:
-        # Resolve public key
-        resolved_key = resolve_public_key_or_prefix(public_key, db)
+        # Validate full public key
+        normalized_key = validate_full_public_key(public_key)
 
-        # Ensure node exists
-        ensure_node_exists(db, resolved_key)
+        # Ensure node exists (will create if it doesn't)
+        ensure_node_exists(db, normalized_key)
 
         # Update all tags
         updated_tags = []
         for tag_request in request.tags:
-            tag = create_or_update_tag(db, resolved_key, tag_request)
+            tag = create_or_update_tag(db, normalized_key, tag_request)
             updated_tags.append(tag)
 
         # Commit all changes atomically
@@ -358,7 +336,7 @@ async def bulk_update_tags(
 @router.delete(
     "/nodes/{public_key}/tags/{key}",
     summary="Delete a tag",
-    description="Delete a specific tag from a node",
+    description="Delete a specific tag from a node (requires full 64-character public key)",
     dependencies=[Depends(check_write_enabled)],
 )
 async def delete_node_tag(
@@ -370,26 +348,26 @@ async def delete_node_tag(
     Delete a tag from a node.
 
     Args:
-        public_key: Node public key or prefix
+        public_key: Node public key (must be exactly 64 hex characters)
         key: Tag key
         db: Database session
 
     Returns:
         Success message
     """
-    # Resolve public key
-    resolved_key = resolve_public_key_or_prefix(public_key, db)
+    # Validate full public key
+    normalized_key = validate_full_public_key(public_key)
 
     # Query tag
     tag = db.query(NodeTag).filter_by(
-        node_public_key=resolved_key,
+        node_public_key=normalized_key,
         key=key
     ).first()
 
     if not tag:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tag '{key}' not found for node {resolved_key[:8]}...",
+            detail=f"Tag '{key}' not found for node {normalized_key[:8]}...",
         )
 
     db.delete(tag)
@@ -402,12 +380,12 @@ async def delete_node_tag(
     "/tags",
     response_model=NodeTagListResponse,
     summary="Query tags across all nodes",
-    description="Query tags with optional filters by key, value type, or node prefix",
+    description="Query tags with optional filters by key, value type, or node public key (full 64 chars)",
 )
 async def query_tags(
     key: Optional[str] = Query(None, description="Filter by tag key"),
     value_type: Optional[str] = Query(None, description="Filter by value type"),
-    node_prefix: Optional[str] = Query(None, description="Filter by node public key prefix"),
+    node_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by node public key (full 64 hex characters)"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of tags to return"),
     offset: int = Query(0, ge=0, description="Number of tags to skip"),
     db: Session = Depends(get_db),
@@ -418,7 +396,7 @@ async def query_tags(
     Args:
         key: Optional filter by tag key
         value_type: Optional filter by value type
-        node_prefix: Optional filter by node public key prefix
+        node_public_key: Optional filter by node public key (must be exactly 64 hex characters)
         limit: Maximum number of tags to return
         offset: Number of tags to skip for pagination
         db: Database session
@@ -435,19 +413,19 @@ async def query_tags(
     if value_type:
         query = query.filter(NodeTag.value_type == value_type)
 
-    if node_prefix:
+    if node_public_key:
+        # Validate and normalize the full public key
+        from ...utils.address import validate_public_key
         try:
-            normalized_prefix = normalize_public_key(node_prefix)
-            # Validate it's a valid hex string
-            from ...utils.address import validate_public_key
-            if not validate_public_key(normalized_prefix, allow_prefix=True):
-                raise ValueError("Invalid hex characters")
+            normalized_key = normalize_public_key(node_public_key)
+            if not validate_public_key(normalized_key, allow_prefix=False):
+                raise ValueError("Invalid public key length")
         except (ValueError, TypeError) as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid node_prefix: must contain only hexadecimal characters (0-9, a-f)",
+                detail="node_public_key must be exactly 64 hexadecimal characters",
             )
-        query = query.filter(NodeTag.node_public_key.like(f"{normalized_prefix}%"))
+        query = query.filter(NodeTag.node_public_key == normalized_key)
 
     # Get total count
     total = query.count()

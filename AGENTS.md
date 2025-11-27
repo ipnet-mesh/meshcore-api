@@ -111,3 +111,71 @@ Tags can be managed via:
 - **Query across nodes**: `/api/v1/tags`
 
 See API documentation at `/docs` and `meshcore_api tag --help` for full details.
+
+## REST API - Public Key Requirements
+
+**IMPORTANT:** Most REST API endpoints require **full 64-character hexadecimal public keys**.
+
+### Endpoints Requiring Full 64-Char Keys:
+- `GET /api/v1/nodes/{public_key}/messages` - Get messages for a node
+- `GET /api/v1/nodes/{public_key}/telemetry` - Get telemetry for a node
+- `GET /api/v1/nodes/{public_key}/tags` - Get/manage tags for a node
+- `PUT /api/v1/nodes/{public_key}/tags/{key}` - Set a tag
+- `POST /api/v1/nodes/{public_key}/tags/bulk` - Bulk update tags
+- `DELETE /api/v1/nodes/{public_key}/tags/{key}` - Delete a tag
+- `GET /api/v1/messages?sender_public_key=...` - Query messages by sender
+- `GET /api/v1/advertisements?node_public_key=...` - Query advertisements
+- `GET /api/v1/telemetry?node_public_key=...` - Query telemetry
+- `GET /api/v1/tags?node_public_key=...` - Query tags
+- All `/api/v1/commands/*` endpoints - Send commands to nodes
+
+### Resolving Partial Keys to Full Keys:
+
+If you only have a partial public key (prefix), use the prefix search endpoint first:
+
+```bash
+# Search by prefix (2-64 characters) - returns ALL matching nodes
+GET /api/v1/nodes/{prefix}
+
+# Example: Search for nodes starting with "abc123"
+curl http://localhost:8000/api/v1/nodes/abc123
+# Returns: {"nodes": [{"public_key": "abc123...full64chars...", ...}], "total": 1}
+```
+
+Then use the full `public_key` from the response for subsequent operations.
+
+### Example Workflow:
+
+```bash
+# 1. Resolve prefix to full key(s)
+curl http://localhost:8000/api/v1/nodes/abc123
+# If multiple matches returned, user selects the correct one
+
+# 2. Use full key for operations
+FULL_KEY="abc123...full64chars..."
+curl http://localhost:8000/api/v1/nodes/$FULL_KEY/messages
+curl http://localhost:8000/api/v1/nodes/$FULL_KEY/tags
+curl -X PUT http://localhost:8000/api/v1/nodes/$FULL_KEY/tags/location \
+  -H "Content-Type: application/json" \
+  -d '{"value_type": "coordinate", "value": {"latitude": 37.7749, "longitude": -122.4194}}'
+```
+
+### Database Storage:
+
+- **Nodes table**: Stores full 64-char keys in `public_key` column (lowercase)
+- **Messages table**: Stores first 12 chars in `pubkey_prefix` column (lowercase, from MeshCore events)
+- **Advertisements/Telemetry tables**: Store full 64-char keys (lowercase)
+- **Trace paths**: Store 2-char hashes (lowercase, from MeshCore events)
+
+The API automatically handles truncation where needed (e.g., messages query).
+
+### Public Key Normalization:
+
+**All public keys and their shortened versions are stored and queried in lowercase** to ensure case-insensitive matching:
+
+- **Storage**: All keys normalized to lowercase before persisting to database
+  - Full keys via `normalize_public_key()` function
+  - Shortened prefixes from MeshCore events converted to lowercase
+  - Trace path hashes converted to lowercase
+- **Queries**: All API inputs normalized to lowercase via `normalize_public_key()`
+- **Consistency**: Case-insensitive operations throughout the application

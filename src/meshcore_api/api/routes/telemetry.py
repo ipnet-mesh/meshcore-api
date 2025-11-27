@@ -2,14 +2,14 @@
 
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
 from ..schemas import TelemetryListResponse
-from ...database.models import Telemetry, Node
-from ...utils.address import normalize_public_key
+from ...database.models import Telemetry
+from ...utils.address import normalize_public_key, validate_public_key
 
 router = APIRouter()
 
@@ -18,10 +18,10 @@ router = APIRouter()
     "/telemetry",
     response_model=TelemetryListResponse,
     summary="Query telemetry data",
-    description="Get telemetry data with optional filters for node and date range",
+    description="Get telemetry data with optional filters for node public key (full 64 chars) and date range",
 )
 async def query_telemetry(
-    node_prefix: Optional[str] = Query(None, min_length=2, max_length=64, description="Filter by node public key prefix"),
+    node_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by node public key (full 64 hex characters)"),
     start_date: Optional[datetime] = Query(None, description="Filter telemetry after this date (ISO 8601)"),
     end_date: Optional[datetime] = Query(None, description="Filter telemetry before this date (ISO 8601)"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of telemetry records to return"),
@@ -32,7 +32,7 @@ async def query_telemetry(
     Query telemetry data with filters.
 
     Args:
-        node_prefix: Filter by node public key prefix (2-64 chars)
+        node_public_key: Filter by node public key (must be exactly 64 hex characters)
         start_date: Only include telemetry after this timestamp
         end_date: Only include telemetry before this timestamp
         limit: Maximum number of records to return (1-1000)
@@ -45,22 +45,20 @@ async def query_telemetry(
     # Start with base query
     query = db.query(Telemetry)
 
-    # Apply node_prefix filter
-    if node_prefix:
-        normalized_prefix = normalize_public_key(node_prefix)
-        # Find all nodes matching the prefix
-        matching_nodes = Node.find_by_prefix(db, normalized_prefix)
-        if matching_nodes:
-            node_keys = [node.public_key for node in matching_nodes]
-            query = query.filter(Telemetry.node_public_key.in_(node_keys))
-        else:
-            # No matching nodes, return empty result
-            return TelemetryListResponse(
-                telemetry=[],
-                total=0,
-                limit=limit,
-                offset=offset,
+    # Apply node_public_key filter
+    if node_public_key:
+        # Validate and normalize the full public key
+        try:
+            normalized_key = normalize_public_key(node_public_key)
+            if not validate_public_key(normalized_key, allow_prefix=False):
+                raise ValueError("Invalid public key length")
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="node_public_key must be exactly 64 hexadecimal characters",
             )
+        # Use full key for query (telemetry table stores full 64-char keys)
+        query = query.filter(Telemetry.node_public_key == normalized_key)
 
     # Apply date filters
     if start_date:

@@ -2,14 +2,14 @@
 
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
 from ..schemas import MessageListResponse
 from ...database.models import Message
-from ...utils.address import normalize_public_key
+from ...utils.address import normalize_public_key, validate_public_key
 
 router = APIRouter()
 
@@ -18,10 +18,10 @@ router = APIRouter()
     "/messages",
     response_model=MessageListResponse,
     summary="Query messages",
-    description="Get messages with optional filters for sender prefix, channel, type, and sender timestamp range",
+    description="Get messages with optional filters for sender public key (full 64 chars), channel, type, and sender timestamp range",
 )
 async def query_messages(
-    pubkey_prefix: Optional[str] = Query(None, min_length=2, max_length=12, description="Filter by sender pubkey prefix (contact messages)"),
+    sender_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by sender public key (full 64 hex characters)"),
     channel_idx: Optional[int] = Query(None, description="Filter by channel index (channel messages)"),
     message_type: Optional[str] = Query(None, description="Filter by message type (contact/channel)"),
     start_date: Optional[datetime] = Query(None, description="Filter messages after this sender_timestamp (ISO 8601)"),
@@ -34,7 +34,7 @@ async def query_messages(
     Query messages with filters.
 
     Args:
-        pubkey_prefix: Filter by sender pubkey prefix (2-12 chars)
+        sender_public_key: Filter by sender public key (must be exactly 64 hex characters)
         channel_idx: Filter by channel index
         message_type: Filter by message type (contact or channel)
         start_date: Only include messages after this sender_timestamp
@@ -49,10 +49,21 @@ async def query_messages(
     # Start with base query
     query = db.query(Message)
 
-    # Apply pubkey_prefix filter
-    if pubkey_prefix:
-        normalized_prefix = normalize_public_key(pubkey_prefix)
-        query = query.filter(Message.pubkey_prefix.like(f"{normalized_prefix}%"))
+    # Apply sender_public_key filter
+    if sender_public_key:
+        # Validate and normalize the full public key
+        try:
+            normalized_key = normalize_public_key(sender_public_key)
+            if not validate_public_key(normalized_key, allow_prefix=False):
+                raise ValueError("Invalid public key length")
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="sender_public_key must be exactly 64 hexadecimal characters",
+            )
+        # Truncate to 12 chars to match database storage
+        pubkey_prefix_12 = normalized_key[:12]
+        query = query.filter(Message.pubkey_prefix == pubkey_prefix_12)
 
     # Apply channel filter
     if channel_idx is not None:

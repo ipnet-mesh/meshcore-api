@@ -92,8 +92,11 @@ meshcore_api query --db-path /data/meshcore.db
 Build and run with Docker/Compose:
 
 ```bash
-# Build image
+# Build image (uses BuildKit caching for faster rebuilds)
 docker build -t meshcore-api:local .
+
+# Build with explicit BuildKit (if not default)
+DOCKER_BUILDKIT=1 docker build -t meshcore-api:local .
 
 # Run (mock mode by default)
 docker run --rm -p 8080:8080 -v $(pwd)/data:/data meshcore-api:local
@@ -101,6 +104,8 @@ docker run --rm -p 8080:8080 -v $(pwd)/data:/data meshcore-api:local
 # Or with docker-compose
 docker compose up --build
 ```
+
+**Note:** The Dockerfile uses BuildKit cache mounts to speed up pip installations. BuildKit is enabled by default in Docker 20.10+. If using an older version, set `DOCKER_BUILDKIT=1`.
 
 ## API Overview
 
@@ -110,10 +115,31 @@ OpenAPI docs are available at `/docs` when the server is running. Core endpoints
 - `GET /api/v1/advertisements` — node adverts
 - `GET /api/v1/telemetry` — telemetry data
 - `GET /api/v1/trace_paths` — trace results (meshcore trace data)
-- `GET /api/v1/nodes` and `/api/v1/nodes/{public_key}` — node info
-- `PUT/POST /api/v1/nodes/{public_key}/tags` — node tags
+- `GET /api/v1/nodes` — list all nodes
+- `GET /api/v1/nodes/{prefix}` — search nodes by public key prefix (2-64 chars)
+- `GET /api/v1/nodes/{public_key}/messages` — messages for a node (requires full 64-char key)
+- `GET /api/v1/nodes/{public_key}/telemetry` — telemetry for a node (requires full 64-char key)
+- `PUT/POST /api/v1/nodes/{public_key}/tags` — node tags (requires full 64-char key)
 - `POST /api/v1/commands/*` — send messages, channel messages, adverts, trace, telemetry requests
 - `GET /api/v1/health` — health/status
+
+### Public Key Requirements
+
+**Most endpoints require full 64-character hexadecimal public keys.** If you only have a partial key or prefix:
+
+1. **Resolve the prefix** using `GET /api/v1/nodes/{prefix}` (returns all matching nodes)
+2. **Use the full key** from the response for subsequent operations
+
+Example workflow:
+```bash
+# Step 1: Search by prefix
+curl http://localhost:8000/api/v1/nodes/abc123
+# Returns: [{"public_key": "abc123...full64chars...", ...}, ...]
+
+# Step 2: Use full key for operations
+curl http://localhost:8000/api/v1/nodes/abc123...full64chars.../messages
+curl http://localhost:8000/api/v1/nodes/abc123...full64chars.../tags
+```
 
 ## Node Tags
 
@@ -128,19 +154,21 @@ Add custom metadata to nodes beyond what's captured in MeshCore events. Tags sup
 
 ### Managing Tags via API
 
+**Note:** All tag operations require the **full 64-character public key**. Use `GET /api/v1/nodes/{prefix}` to resolve partial keys first.
+
 ```bash
 # Set a friendly name (string tag) - key is in URL, not needed in body
-curl -X PUT http://localhost:8000/api/v1/nodes/{public_key}/tags/friendly_name \
+curl -X PUT http://localhost:8000/api/v1/nodes/abc123...full64chars.../tags/friendly_name \
   -H "Content-Type: application/json" \
   -d '{"value_type": "string", "value": "Router-1"}'
 
 # Set GPS location (coordinate tag)
-curl -X PUT http://localhost:8000/api/v1/nodes/{public_key}/tags/location \
+curl -X PUT http://localhost:8000/api/v1/nodes/abc123...full64chars.../tags/location \
   -H "Content-Type: application/json" \
   -d '{"value_type": "coordinate", "value": {"latitude": 45.52, "longitude": -122.68}}'
 
 # Bulk update multiple tags at once
-curl -X POST http://localhost:8000/api/v1/nodes/{public_key}/tags/bulk \
+curl -X POST http://localhost:8000/api/v1/nodes/abc123...full64chars.../tags/bulk \
   -H "Content-Type: application/json" \
   -d '{
     "tags": [
@@ -151,16 +179,17 @@ curl -X POST http://localhost:8000/api/v1/nodes/{public_key}/tags/bulk \
   }'
 
 # Get all tags for a node
-curl http://localhost:8000/api/v1/nodes/{public_key}/tags
+curl http://localhost:8000/api/v1/nodes/abc123...full64chars.../tags
 
-# Query tags across all nodes
+# Query tags across all nodes (filter by key, value_type, or node_public_key)
 curl "http://localhost:8000/api/v1/tags?key=manufacturer"
+curl "http://localhost:8000/api/v1/tags?node_public_key=abc123...full64chars..."
 
 # Get all unique tag keys
 curl http://localhost:8000/api/v1/tags/keys
 
 # Delete a tag
-curl -X DELETE http://localhost:8000/api/v1/nodes/{public_key}/tags/battery_count
+curl -X DELETE http://localhost:8000/api/v1/nodes/abc123...full64chars.../tags/battery_count
 ```
 
 ### Querying Nodes by Tags

@@ -1,6 +1,7 @@
 services:
   meshcore-api:
-    build: .
+    build:
+      context: .
     image: ghcr.io/ipnet-mesh/meshcore-api:latest
     command: ["server"]
     environment:

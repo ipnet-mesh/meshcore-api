@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Minimal Alpine-based Dockerfile for MeshCore MCP Server
 FROM python:3.11-alpine
 
@@ -8,8 +9,10 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
 
-# Install the package
-RUN pip install --no-cache-dir -e .
+# Install the package with pip cache mount (BuildKit feature)
+# This caches downloaded packages across builds for faster rebuilds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -e .
 
 # Expose default port
 EXPOSE 8080

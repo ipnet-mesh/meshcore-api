@@ -40,10 +40,22 @@ This API provides access to MeshCore network events and allows sending commands 
 ## Features
 
 - **Query Events**: Retrieve messages, advertisements, telemetry, and other network events
-- **Node Management**: List and search nodes by public key prefix
+- **Node Management**: List and search nodes by public key (full 64 hex characters or prefix)
 - **Send Commands**: Send messages, pings, trace paths, and telemetry requests
 - **Health Monitoring**: Check system and MeshCore connection status
 - **Metrics**: Prometheus metrics endpoint for observability
+- **Node Tags**: Manage custom metadata for nodes (friendly names, locations, etc.)
+
+## Public Key Requirements
+
+Most endpoints require **full 64-character hexadecimal public keys**:
+- All write operations (tags, commands) require full 64-char keys
+- Query endpoints (messages, advertisements, telemetry, tags) require full 64-char keys
+- Use `GET /api/v1/nodes/{prefix}` to resolve partial keys to full keys first
+
+**Workflow:**
+1. Search by prefix: `GET /api/v1/nodes/abc123` (returns all matching nodes)
+2. Use full key for operations: `GET /api/v1/nodes/{full-64-char-key}/messages`
 
 ## Authentication
 
