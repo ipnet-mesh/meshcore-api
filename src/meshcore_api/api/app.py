@@ -23,10 +23,14 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
     Authorization header with the Bearer token, except for excluded paths.
     """
 
-    # Paths that are always public (no authentication required)
-    EXCLUDED_PATHS = {
+    # Path prefixes that are always public (no authentication required)
+    EXCLUDED_PATH_PREFIXES = (
         "/docs",
         "/redoc",
+    )
+
+    # Exact paths that are always public (no authentication required)
+    EXCLUDED_EXACT_PATHS = {
         "/openapi.json",
         "/metrics",
     }
@@ -58,8 +62,9 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
         if not self.auth_enabled:
             return await call_next(request)
 
-        # Skip auth check for excluded paths
-        if request.url.path in self.EXCLUDED_PATHS:
+        # Skip auth check for excluded paths (prefix or exact match)
+        path = request.url.path
+        if path in self.EXCLUDED_EXACT_PATHS or path.startswith(self.EXCLUDED_PATH_PREFIXES):
             return await call_next(request)
 
         # Extract Authorization header
