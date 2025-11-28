@@ -7,6 +7,7 @@ MeshCore companion application for event collection, persistence, and REST API a
 - Subscribe to all MeshCore events via Serial/BLE connection
 - Persist events in SQLite database with configurable retention
 - Custom node metadata tags with typed values (strings, numbers, booleans, coordinates)
+- **Webhooks** for real-time event notifications to external URLs
 - REST API for querying collected data and sending commands
 - Mock MeshCore implementation for development without hardware
 - Prometheus metrics for monitoring
@@ -240,6 +241,114 @@ Output includes tags for each node:
       location: (45.52, -122.68)
       manufacturer: Meshtastic
 ```
+
+## Webhooks
+
+Send real-time event notifications to external URLs when specific MeshCore events occur. Webhooks are useful for integrations, alerting systems, and event-driven workflows.
+
+### Supported Events
+
+- **Direct/Contact Messages** (`CONTACT_MSG_RECV`) - Personal messages
+- **Channel Messages** (`CHANNEL_MSG_RECV`) - Group/channel messages
+- **Advertisements** (`ADVERTISEMENT`, `NEW_ADVERT`) - Node announcements
+
+### Configuration
+
+Each event type has its own configurable webhook URL:
+
+**Environment Variables:**
+```bash
+WEBHOOK_MESSAGE_DIRECT=https://example.com/webhooks/direct
+WEBHOOK_MESSAGE_CHANNEL=https://example.com/webhooks/channel
+WEBHOOK_ADVERTISEMENT=https://example.com/webhooks/adverts
+WEBHOOK_TIMEOUT=10              # HTTP timeout in seconds (default: 5)
+WEBHOOK_RETRY_COUNT=5           # Number of retry attempts (default: 3)
+```
+
+**CLI Arguments:**
+```bash
+meshcore_api server \
+  --use-mock \
+  --webhook-message-direct https://example.com/webhooks/direct \
+  --webhook-message-channel https://example.com/webhooks/channel \
+  --webhook-advertisement https://example.com/webhooks/adverts \
+  --webhook-timeout 10 \
+  --webhook-retry-count 5
+```
+
+### Webhook Payload Format
+
+All webhooks send HTTP POST requests with JSON payloads:
+
+```json
+{
+  "event_type": "CONTACT_MSG_RECV",
+  "timestamp": "2025-11-28T19:41:38.748379Z",
+  "data": {
+    // Event-specific data (matches database model structure)
+  }
+}
+```
+
+**Example Channel Message:**
+```json
+{
+  "event_type": "CHANNEL_MSG_RECV",
+  "timestamp": "2025-11-28T19:41:38.748379Z",
+  "data": {
+    "channel_idx": 4,
+    "path_len": 10,
+    "txt_type": 0,
+    "text": "Hello from the mesh!",
+    "SNR": 8.5,
+    "sender_timestamp": 1732820498
+  }
+}
+```
+
+**Example Advertisement:**
+```json
+{
+  "event_type": "ADVERTISEMENT",
+  "timestamp": "2025-11-28T19:41:43.990282Z",
+  "data": {
+    "public_key": "4767c2897c256df8d85a5fa090574284bfd15b92d47359741b0abd5098ed30c4",
+    "name": "Gateway-01",
+    "adv_type": "repeater",
+    "latitude": 45.5231,
+    "longitude": -122.6765,
+    "flags": 218
+  }
+}
+```
+
+### Error Handling & Retries
+
+- **Non-blocking**: Webhook failures don't affect event processing
+- **Exponential backoff**: Retries with 2s, 4s, 8s delays
+- **Configurable timeout**: Default 5 seconds per request
+- **Logging**: All webhook attempts logged (debug/warning/error levels)
+
+### Testing Webhooks
+
+Use the included test receiver to verify webhook functionality:
+
+```bash
+# In terminal 1: Start webhook test server
+python test_webhooks.py
+
+# In terminal 2: Start MeshCore API with webhooks
+meshcore_api server \
+  --use-mock \
+  --webhook-message-direct http://localhost:9000/webhooks/direct \
+  --webhook-message-channel http://localhost:9000/webhooks/channel \
+  --webhook-advertisement http://localhost:9000/webhooks/advertisement
+
+# Check webhook statistics
+curl http://localhost:9000/status
+```
+
+The test server displays received webhooks in real-time and provides a status endpoint for monitoring.
 
 ## API Documentation
 
