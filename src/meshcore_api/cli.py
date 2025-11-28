@@ -140,12 +140,12 @@ def cli():
 @click.option(
     "--rate-limit-per-second",
     type=float,
-    help="Commands per second (average rate) (default: 2.0)",
+    help="Commands per second (average rate) (default: 0.02 = 1 per 50 seconds for LoRa duty cycle)",
 )
 @click.option(
     "--rate-limit-burst",
     type=int,
-    help="Maximum burst size for rate limiting (default: 5)",
+    help="Maximum burst size for rate limiting (default: 2)",
 )
 @click.option(
     "--no-rate-limit",
@@ -155,7 +155,7 @@ def cli():
 @click.option(
     "--debounce-window",
     type=float,
-    help="Debounce window in seconds (default: 5.0)",
+    help="Debounce window in seconds (default: 60.0)",
 )
 @click.option(
     "--debounce-cache-size",

@@ -59,10 +59,10 @@ class Config:
     queue_full_behavior: str = "reject"  # reject|drop_oldest
     queue_timeout_seconds: float = 30.0
     rate_limit_enabled: bool = True
-    rate_limit_per_second: float = 2.0
-    rate_limit_burst: int = 5
+    rate_limit_per_second: float = 0.02  # ~1 command per 50 seconds (LoRa duty cycle)
+    rate_limit_burst: int = 2  # Minimal burst for LoRa
     debounce_enabled: bool = True
-    debounce_window_seconds: float = 5.0
+    debounce_window_seconds: float = 60.0  # Increased to match LoRa transmission time
     debounce_cache_max_size: int = 1000
     debounce_commands: str = "send_message,send_channel_message,send_advert"
 
