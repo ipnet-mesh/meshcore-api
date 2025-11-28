@@ -98,7 +98,7 @@ Data is automatically cleaned up based on the configured retention period (defau
                 "description": "Telemetry data from nodes",
             },
             {
-                "name": "trace_paths",
+                "name": "trace-paths",
                 "description": "Network trace path results",
             },
             {
@@ -196,7 +196,7 @@ Data is automatically cleaned up based on the configured retention period (defau
     app.include_router(messages.router, prefix="/api/v1", tags=["messages"])
     app.include_router(advertisements.router, prefix="/api/v1", tags=["advertisements"])
     app.include_router(telemetry.router, prefix="/api/v1", tags=["telemetry"])
-    app.include_router(trace_paths.router, prefix="/api/v1", tags=["trace_paths"])
+    app.include_router(trace_paths.router, prefix="/api/v1", tags=["trace-paths"])
     app.include_router(commands.router, prefix="/api/v1", tags=["commands"])
 
     # =========================================================================

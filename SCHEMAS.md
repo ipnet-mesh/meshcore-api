@@ -45,8 +45,6 @@ Node advertisements announcing presence and metadata.
   "public_key": "string (64 hex chars)",
   "name": "string (optional)",
   "adv_type": "string (optional)",
-  "latitude": "number (optional)",
-  "longitude": "number (optional)",
   "flags": "integer (optional)"
 }
 ```
@@ -55,8 +53,6 @@ Node advertisements announcing presence and metadata.
 - `public_key`: Node's full 64-character hexadecimal public key (required)
 - `name`: Node name/alias (e.g., "Gateway-01", "Alice")
 - `adv_type`: Node type - one of: `"chat"`, `"repeater"`, `"room"`, `"none"`
-- `latitude`: GPS latitude coordinate
-- `longitude`: GPS longitude coordinate
 - `flags`: Node capability/status flags (bitmask)
 
 **Example**:
@@ -65,8 +61,6 @@ Node advertisements announcing presence and metadata.
   "public_key": "4767c2897c256df8d85a5fa090574284bfd15b92d47359741b0abd5098ed30c4",
   "name": "Gateway-01",
   "adv_type": "repeater",
-  "latitude": 45.5231,
-  "longitude": -122.6765,
   "flags": 218
 }
 ```
@@ -247,7 +241,7 @@ Sensor data from network nodes (temperature, humidity, battery, etc.).
 **Example**:
 ```json
 {
-  "node_public_key": "4767c2897c25",
+  "node_public_key": "4767c2897c256df8d85a5fa090574284bfd15b92d47359741b0abd5098ed30c4",
   "lpp_data": null,
   "parsed_data": {
     "temperature": 22.5,
@@ -496,4 +490,4 @@ See [AGENTS.md](AGENTS.md) for webhook configuration details.
 3. **Webhook Handler** → Sends HTTP POST to configured URLs (if enabled)
 4. **REST API** → Query historical data from database
 
-All events are logged to the `events_log` table with full payloads for debugging and audit purposes.
+Most events are logged to the `events_log` table with full payloads for debugging and audit purposes. Some high-frequency informational events (e.g., `NEXT_CONTACT`) are intentionally excluded from logging to reduce database size.

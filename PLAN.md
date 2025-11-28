@@ -166,7 +166,7 @@ MeshCore companion application that:
 - [x] `GET /api/v1/telemetry`
   - List telemetry data
   - Filters: node, date range, pagination
-- [x] `GET /api/v1/trace_paths`
+- [x] `GET /api/v1/trace-paths`
   - List trace path results
   - Filters: destination, date range, pagination
 - [x] `GET /api/v1/statistics`
