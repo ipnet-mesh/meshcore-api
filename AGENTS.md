@@ -95,6 +95,8 @@ The application stores MeshCore event data in SQLite with the following key tabl
 - **trace_paths** - Network trace path results
 - **events_log** - Raw event log
 
+**For complete event payload schemas, see [SCHEMAS.md](SCHEMAS.md)**
+
 ## Node Tags Feature
 
 The application supports custom metadata tags for nodes with typed values:
@@ -121,6 +123,8 @@ The application can send HTTP POST notifications to external URLs when specific 
 - **Direct/Contact Messages** (`CONTACT_MSG_RECV`)
 - **Channel Messages** (`CHANNEL_MSG_RECV`)
 - **Advertisements** (`ADVERTISEMENT`, `NEW_ADVERT`)
+
+**For detailed event payload schemas, see [SCHEMAS.md](SCHEMAS.md)**
 
 ### Configuration
 
