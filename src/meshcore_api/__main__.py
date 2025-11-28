@@ -17,8 +17,9 @@ from .subscriber.metrics import get_metrics
 from .subscriber.metrics_updater import update_database_metrics
 from .utils.logging import setup_logging
 from .api.app import create_app
-from .api.dependencies import set_meshcore_instance, set_config_instance
+from .api.dependencies import set_meshcore_instance, set_config_instance, set_command_queue_instance
 from .webhook import WebhookHandler
+from .queue import CommandQueueManager, CommandType, QueueFullBehavior
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class Application:
         """
         self.config = config
         self.meshcore: Optional[MeshCoreInterface] = None
+        self.command_queue: Optional[CommandQueueManager] = None
         self.event_handler: Optional[EventHandler] = None
         self.webhook_handler: Optional[WebhookHandler] = None
         self.cleanup_task: Optional[asyncio.Task] = None
@@ -116,9 +118,39 @@ class Application:
         logger.info("Subscribing to MeshCore events...")
         await self.meshcore.subscribe_to_events(self.event_handler.handle_event)
 
-        # Make MeshCore and Config instances available to API routes
+        # Initialize command queue manager
+        logger.info("Initializing command queue manager...")
+        debounce_commands = set()
+        if self.config.debounce_commands:
+            for cmd_str in self.config.debounce_commands.split(','):
+                cmd_str = cmd_str.strip()
+                try:
+                    debounce_commands.add(CommandType(cmd_str))
+                except ValueError:
+                    logger.warning(f"Invalid debounce command type: {cmd_str}")
+
+        self.command_queue = CommandQueueManager(
+            meshcore=self.meshcore,
+            max_queue_size=self.config.queue_max_size,
+            queue_full_behavior=QueueFullBehavior(self.config.queue_full_behavior),
+            queue_timeout_seconds=self.config.queue_timeout_seconds,
+            rate_limit_per_second=self.config.rate_limit_per_second,
+            rate_limit_burst=self.config.rate_limit_burst,
+            rate_limit_enabled=self.config.rate_limit_enabled,
+            debounce_window_seconds=self.config.debounce_window_seconds,
+            debounce_cache_max_size=self.config.debounce_cache_max_size,
+            debounce_enabled=self.config.debounce_enabled,
+            debounce_commands=debounce_commands if debounce_commands else None,
+        )
+
+        # Start command queue worker
+        logger.info("Starting command queue worker...")
+        await self.command_queue.start()
+
+        # Make MeshCore, Config, and CommandQueue instances available to API routes
         set_meshcore_instance(self.meshcore)
         set_config_instance(self.config)
+        set_command_queue_instance(self.command_queue)
 
         # Query contacts from device
         await self._query_contacts()
@@ -172,6 +204,11 @@ class Application:
                 await self.metrics_task
             except asyncio.CancelledError:
                 pass
+
+        # Stop command queue worker
+        if self.command_queue:
+            logger.info("Stopping command queue worker...")
+            await self.command_queue.stop()
 
         # Close webhook handler
         if self.webhook_handler:
