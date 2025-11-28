@@ -159,7 +159,9 @@ class CommandQueueManager:
             )
             self._commands_debounced += 1
 
-            # For duplicates, return info about the pending command
+            # Check if original command has completed
+            cached_result = await self._debouncer.get_cached_result(command_hash)
+
             queue_info = QueueInfo(
                 position=1,  # Approximate - it's somewhere in queue
                 estimated_wait_seconds=self._estimate_wait_time(),
@@ -168,13 +170,21 @@ class CommandQueueManager:
                 original_request_time=original_time,
             )
 
-            result = CommandResult(
-                success=True,
-                message="Command already queued (debounced)",
-                request_id="debounced",
-            )
-
-            return result, queue_info
+            if cached_result is not None:
+                # Original command has completed, return its result
+                logger.debug(
+                    f"Returning cached result for debounced command",
+                    extra={"command_hash": command_hash, "success": cached_result.success},
+                )
+                return cached_result, queue_info
+            else:
+                # Original command still pending
+                result = CommandResult(
+                    success=True,
+                    message="Command already queued (pending execution)",
+                    request_id="debounced",
+                )
+                return result, queue_info
 
         # Not a duplicate, enqueue normally
         command = QueuedCommand(
@@ -224,6 +234,20 @@ class CommandQueueManager:
                         f"Dropped command {dropped.command_type.value} to make room",
                         extra={"dropped_request_id": dropped.request_id},
                     )
+
+                    # Mark dropped command as failed in debouncer
+                    if dropped.command_hash:
+                        failure_result = CommandResult(
+                            success=False,
+                            message="Command dropped from queue (queue full)",
+                            request_id=dropped.request_id,
+                            error="queue_full",
+                        )
+                        await self._debouncer.mark_completed(dropped.command_hash, failure_result)
+                        logger.debug(
+                            f"Marked dropped command as failed in debouncer",
+                            extra={"command_hash": dropped.command_hash},
+                        )
 
                     # Now try again
                     self._queue.put_nowait(command)
