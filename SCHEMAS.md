@@ -214,7 +214,7 @@ Network trace path results showing route and signal strength.
 ```
 
 **Webhook Trigger**: No
-**REST API**: `GET /api/v1/trace_paths`
+**REST API**: `GET /api/v1/trace-paths`
 
 ---
 

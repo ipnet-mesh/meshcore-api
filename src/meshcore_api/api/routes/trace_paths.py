@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/trace_paths",
+    "/trace-paths",
     response_model=TracePathListResponse,
     summary="Query trace path results",
     description="Get trace path results with optional filters for destination and date range",

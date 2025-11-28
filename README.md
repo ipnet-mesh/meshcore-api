@@ -115,7 +115,7 @@ OpenAPI docs are available at `/docs` when the server is running. Core endpoints
 - `GET /api/v1/messages` — message history
 - `GET /api/v1/advertisements` — node adverts
 - `GET /api/v1/telemetry` — telemetry data
-- `GET /api/v1/trace_paths` — trace results (meshcore trace data)
+- `GET /api/v1/trace-paths` — trace results (meshcore trace data)
 - `GET /api/v1/nodes` — list all nodes
 - `GET /api/v1/nodes/{prefix}` — search nodes by public key prefix (2-64 chars)
 - `GET /api/v1/nodes/{public_key}/messages` — messages for a node (requires full 64-char key)
