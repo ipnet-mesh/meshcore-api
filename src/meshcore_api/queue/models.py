@@ -32,6 +32,7 @@ class QueuedCommand:
     parameters: dict[str, Any]
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     enqueued_at: datetime = field(default_factory=datetime.utcnow)
+    command_hash: Optional[str] = None  # Hash for debouncing (if applicable)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""

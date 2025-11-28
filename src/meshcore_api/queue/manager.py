@@ -177,7 +177,11 @@ class CommandQueueManager:
             return result, queue_info
 
         # Not a duplicate, enqueue normally
-        command = QueuedCommand(command_type=command_type, parameters=parameters)
+        command = QueuedCommand(
+            command_type=command_type,
+            parameters=parameters,
+            command_hash=command_hash,  # Store hash for marking completed later
+        )
 
         try:
             # Try to add to queue (non-blocking)
@@ -292,6 +296,10 @@ class CommandQueueManager:
 
                 result = await self._execute_command(command)
                 self._commands_processed += 1
+
+                # Mark command as completed in debouncer (allows cache cleanup)
+                if command.command_hash:
+                    await self._debouncer.mark_completed(command.command_hash, result)
 
                 # Log result
                 if result.success:
