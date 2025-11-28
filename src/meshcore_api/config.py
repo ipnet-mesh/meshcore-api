@@ -360,11 +360,11 @@ class Config:
                 'queue_timeout': cli_args.get('queue_timeout'),
                 'rate_limit_per_second': cli_args.get('rate_limit_per_second'),
                 'rate_limit_burst': cli_args.get('rate_limit_burst'),
-                'no_rate_limit': cli_args.get('rate_limit_enabled') is False if 'rate_limit_enabled' in cli_args else False,
+                'no_rate_limit': cli_args.get('no_rate_limit', False),
                 'debounce_window': cli_args.get('debounce_window'),
                 'debounce_cache_size': cli_args.get('debounce_cache_size'),
                 'debounce_commands': cli_args.get('debounce_commands'),
-                'no_debounce': cli_args.get('debounce_enabled') is False if 'debounce_enabled' in cli_args else False,
+                'no_debounce': cli_args.get('no_debounce', False),
             })
 
         # Helper function to get value with priority: CLI > Env > Default

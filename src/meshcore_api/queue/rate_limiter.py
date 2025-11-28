@@ -74,10 +74,10 @@ class TokenBucketRateLimiter:
         Get the current number of available tokens.
 
         Returns:
-            Number of tokens currently available
+            Number of tokens currently available (returns -1.0 if rate limiting is disabled)
         """
         if not self.enabled or self.rate <= 0:
-            return float('inf')
+            return -1.0  # Indicates unlimited (rate limiting disabled)
 
         # Update tokens based on elapsed time
         now = time.monotonic()

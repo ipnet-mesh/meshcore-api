@@ -122,6 +122,56 @@ def cli():
     type=str,
     help="Bearer token for API authentication (if set, all endpoints except /docs, /redoc require authentication)",
 )
+@click.option(
+    "--queue-max-size",
+    type=int,
+    help="Maximum command queue size (default: 100)",
+)
+@click.option(
+    "--queue-full-behavior",
+    type=click.Choice(["reject", "drop_oldest"], case_sensitive=False),
+    help="Behavior when queue is full (default: reject)",
+)
+@click.option(
+    "--queue-timeout",
+    type=float,
+    help="Maximum time a command waits in queue in seconds (default: 30.0)",
+)
+@click.option(
+    "--rate-limit-per-second",
+    type=float,
+    help="Commands per second (average rate) (default: 2.0)",
+)
+@click.option(
+    "--rate-limit-burst",
+    type=int,
+    help="Maximum burst size for rate limiting (default: 5)",
+)
+@click.option(
+    "--no-rate-limit",
+    is_flag=True,
+    help="Disable rate limiting",
+)
+@click.option(
+    "--debounce-window",
+    type=float,
+    help="Debounce window in seconds (default: 5.0)",
+)
+@click.option(
+    "--debounce-cache-size",
+    type=int,
+    help="Maximum debounce cache size (default: 1000)",
+)
+@click.option(
+    "--debounce-commands",
+    type=str,
+    help="Comma-separated list of command types to debounce (default: send_message,send_channel_message,send_advert)",
+)
+@click.option(
+    "--no-debounce",
+    is_flag=True,
+    help="Disable debouncing",
+)
 def server(**kwargs):
     """Start the MeshCore API server."""
     from .__main__ import Application
