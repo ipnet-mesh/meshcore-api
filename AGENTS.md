@@ -133,6 +133,11 @@ WEBHOOK_MESSAGE_CHANNEL=https://example.com/webhooks/channel
 WEBHOOK_ADVERTISEMENT=https://example.com/webhooks/adverts
 WEBHOOK_TIMEOUT=10              # HTTP timeout in seconds (default: 5)
 WEBHOOK_RETRY_COUNT=5           # Number of retry attempts (default: 3)
+
+# JSONPath expressions to filter webhook payloads (default: "$" for full payload)
+WEBHOOK_MESSAGE_DIRECT_JSONPATH="$.data.text"
+WEBHOOK_MESSAGE_CHANNEL_JSONPATH="$.data.text"
+WEBHOOK_ADVERTISEMENT_JSONPATH="$"
 ```
 
 **CLI Arguments:**
@@ -143,7 +148,10 @@ meshcore_api server \
   --webhook-message-channel https://example.com/webhooks/channel \
   --webhook-advertisement https://example.com/webhooks/adverts \
   --webhook-timeout 10 \
-  --webhook-retry-count 5
+  --webhook-retry-count 5 \
+  --webhook-message-direct-jsonpath "$.data.text" \
+  --webhook-message-channel-jsonpath "$.data.text" \
+  --webhook-advertisement-jsonpath "$"
 ```
 
 ### Webhook Payload
@@ -161,6 +169,21 @@ All webhooks send HTTP POST with JSON:
   }
 }
 ```
+
+### JSONPath Payload Filtering
+
+Use JSONPath expressions to filter which portion of the webhook payload to send. This is useful for integrating with AI agents (like Pydantic AI) that expect simple text input.
+
+**Examples:**
+- Send only message text: `$.data.text` → `"Hello from the mesh!"` (plain text)
+- Send only data object: `$.data` → `{"channel_idx": 4, "text": "...", ...}` (JSON)
+- Send entire payload: `$` → Full payload with event_type, timestamp, and data (default)
+
+**Behavior:**
+- Primitive values (string/number/boolean) sent as plain text or JSON value
+- Objects/Arrays sent as JSON
+- Invalid expressions or empty results fall back to full payload
+- Errors logged without affecting event processing
 
 ### Testing Webhooks
 

@@ -49,6 +49,9 @@ class Config:
     webhook_advertisement: Optional[str] = None
     webhook_timeout: int = 5
     webhook_retry_count: int = 3
+    webhook_message_direct_jsonpath: str = "$"
+    webhook_message_channel_jsonpath: str = "$"
+    webhook_advertisement_jsonpath: str = "$"
 
     @classmethod
     def from_args_and_env(cls, cli_args: Optional[dict] = None) -> "Config":
@@ -228,6 +231,21 @@ class Config:
             type=int,
             help="Number of webhook retry attempts on failure"
         )
+        webhook_group.add_argument(
+            "--webhook-message-direct-jsonpath",
+            type=str,
+            help="JSONPath expression to filter direct message webhook payload (default: '$' for entire payload)"
+        )
+        webhook_group.add_argument(
+            "--webhook-message-channel-jsonpath",
+            type=str,
+            help="JSONPath expression to filter channel message webhook payload (default: '$' for entire payload)"
+        )
+        webhook_group.add_argument(
+            "--webhook-advertisement-jsonpath",
+            type=str,
+            help="JSONPath expression to filter advertisement webhook payload (default: '$' for entire payload)"
+        )
 
         # Only parse args if not provided
         if cli_args is None:
@@ -261,6 +279,9 @@ class Config:
                 'webhook_advertisement': cli_args.get('webhook_advertisement'),
                 'webhook_timeout': cli_args.get('webhook_timeout'),
                 'webhook_retry_count': cli_args.get('webhook_retry_count'),
+                'webhook_message_direct_jsonpath': cli_args.get('webhook_message_direct_jsonpath'),
+                'webhook_message_channel_jsonpath': cli_args.get('webhook_message_channel_jsonpath'),
+                'webhook_advertisement_jsonpath': cli_args.get('webhook_advertisement_jsonpath'),
             })
 
         # Helper function to get value with priority: CLI > Env > Default
@@ -367,6 +388,18 @@ class Config:
         config.webhook_retry_count = get_value(
             args.webhook_retry_count, "WEBHOOK_RETRY_COUNT", config.webhook_retry_count, int
         )
+        config.webhook_message_direct_jsonpath = get_value(
+            args.webhook_message_direct_jsonpath, "WEBHOOK_MESSAGE_DIRECT_JSONPATH",
+            config.webhook_message_direct_jsonpath
+        )
+        config.webhook_message_channel_jsonpath = get_value(
+            args.webhook_message_channel_jsonpath, "WEBHOOK_MESSAGE_CHANNEL_JSONPATH",
+            config.webhook_message_channel_jsonpath
+        )
+        config.webhook_advertisement_jsonpath = get_value(
+            args.webhook_advertisement_jsonpath, "WEBHOOK_ADVERTISEMENT_JSONPATH",
+            config.webhook_advertisement_jsonpath
+        )
 
         return config
 
@@ -416,10 +449,13 @@ class Config:
             lines.append("  Webhooks:")
             if self.webhook_message_direct:
                 lines.append(f"    Direct Messages: {self.webhook_message_direct}")
+                lines.append(f"      JSONPath: {self.webhook_message_direct_jsonpath}")
             if self.webhook_message_channel:
                 lines.append(f"    Channel Messages: {self.webhook_message_channel}")
+                lines.append(f"      JSONPath: {self.webhook_message_channel_jsonpath}")
             if self.webhook_advertisement:
                 lines.append(f"    Advertisements: {self.webhook_advertisement}")
+                lines.append(f"      JSONPath: {self.webhook_advertisement_jsonpath}")
             lines.extend([
                 f"    Timeout: {self.webhook_timeout}s",
                 f"    Retry Count: {self.webhook_retry_count}",

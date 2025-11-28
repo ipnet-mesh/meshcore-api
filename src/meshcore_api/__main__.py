@@ -99,6 +99,9 @@ class Application:
                 message_direct_url=self.config.webhook_message_direct,
                 message_channel_url=self.config.webhook_message_channel,
                 advertisement_url=self.config.webhook_advertisement,
+                message_direct_jsonpath=self.config.webhook_message_direct_jsonpath,
+                message_channel_jsonpath=self.config.webhook_message_channel_jsonpath,
+                advertisement_jsonpath=self.config.webhook_advertisement_jsonpath,
                 timeout=self.config.webhook_timeout,
                 retry_count=self.config.webhook_retry_count,
             )
