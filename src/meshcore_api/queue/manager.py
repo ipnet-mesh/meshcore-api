@@ -223,6 +223,21 @@ class CommandQueueManager:
             if self.queue_full_behavior == QueueFullBehavior.REJECT:
                 logger.warning(f"Queue full, rejecting command {command_type.value}")
                 self._commands_dropped += 1
+
+                # Mark command as failed in debouncer before rejecting
+                if command_hash:
+                    failure_result = CommandResult(
+                        success=False,
+                        message="Command queue is full",
+                        request_id=command.request_id,
+                        error="queue_full",
+                    )
+                    await self._debouncer.mark_completed(command_hash, failure_result)
+                    logger.debug(
+                        f"Marked rejected command as failed in debouncer",
+                        extra={"command_hash": command_hash},
+                    )
+
                 raise QueueFullError("Command queue is full")
             else:  # DROP_OLDEST
                 logger.warning(f"Queue full, dropping oldest command for {command_type.value}")
