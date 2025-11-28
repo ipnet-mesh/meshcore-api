@@ -112,6 +112,76 @@ Tags can be managed via:
 
 See API documentation at `/docs` and `meshcore_api tag --help` for full details.
 
+## Webhooks Feature
+
+The application can send HTTP POST notifications to external URLs when specific MeshCore events occur.
+
+### Supported Events
+
+- **Direct/Contact Messages** (`CONTACT_MSG_RECV`)
+- **Channel Messages** (`CHANNEL_MSG_RECV`)
+- **Advertisements** (`ADVERTISEMENT`, `NEW_ADVERT`)
+
+### Configuration
+
+Configure webhooks via environment variables or CLI arguments:
+
+**Environment Variables:**
+```bash
+WEBHOOK_MESSAGE_DIRECT=https://example.com/webhooks/direct
+WEBHOOK_MESSAGE_CHANNEL=https://example.com/webhooks/channel
+WEBHOOK_ADVERTISEMENT=https://example.com/webhooks/adverts
+WEBHOOK_TIMEOUT=10              # HTTP timeout in seconds (default: 5)
+WEBHOOK_RETRY_COUNT=5           # Number of retry attempts (default: 3)
+```
+
+**CLI Arguments:**
+```bash
+meshcore_api server \
+  --use-mock \
+  --webhook-message-direct https://example.com/webhooks/direct \
+  --webhook-message-channel https://example.com/webhooks/channel \
+  --webhook-advertisement https://example.com/webhooks/adverts \
+  --webhook-timeout 10 \
+  --webhook-retry-count 5
+```
+
+### Webhook Payload
+
+All webhooks send HTTP POST with JSON:
+```json
+{
+  "event_type": "CHANNEL_MSG_RECV",
+  "timestamp": "2025-11-28T19:41:38.748379Z",
+  "data": {
+    "channel_idx": 4,
+    "text": "Hello from the mesh!",
+    "SNR": 8.5,
+    ...
+  }
+}
+```
+
+### Testing Webhooks
+
+Use the included test receiver:
+```bash
+# Start webhook receiver
+python test_webhooks.py
+
+# Start API with webhooks
+meshcore_api server \
+  --use-mock \
+  --webhook-message-direct http://localhost:9000/webhooks/direct \
+  --webhook-message-channel http://localhost:9000/webhooks/channel \
+  --webhook-advertisement http://localhost:9000/webhooks/advertisement
+```
+
+Features:
+- **Non-blocking**: Webhook failures don't affect event processing
+- **Retry logic**: Exponential backoff (2s, 4s, 8s delays)
+- **Logging**: Debug/warning/error logs for all webhook attempts
+
 ## REST API - Public Key Requirements
 
 **IMPORTANT:** Most REST API endpoints require **full 64-character hexadecimal public keys**.

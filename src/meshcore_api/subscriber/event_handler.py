@@ -1,4 +1,5 @@
 """Event handler for processing and persisting MeshCore events."""
+import asyncio
 import base64
 import json
 import logging
@@ -23,10 +24,15 @@ logger = logging.getLogger(__name__)
 class EventHandler:
     """Handles MeshCore events and persists them to database."""
 
-    def __init__(self, meshcore: Optional[MeshCoreInterface] = None):
+    def __init__(
+        self,
+        meshcore: Optional[MeshCoreInterface] = None,
+        webhook_handler: Optional['WebhookHandler'] = None,
+    ):
         """Initialize event handler."""
         self.event_count = 0
         self.meshcore = meshcore
+        self.webhook_handler = webhook_handler
         self._contact_fetch_inflight = False
 
     async def handle_event(self, event: Event) -> None:
@@ -85,6 +91,15 @@ class EventHandler:
                 logger.debug(f"Informational event (not persisted separately): {event.type}")
             else:
                 logger.info(f"Unknown event type (logged to events_log): {event.type}")
+
+            # Trigger webhook (non-blocking) for supported event types
+            if self.webhook_handler and event.type in [
+                "CONTACT_MSG_RECV",
+                "CHANNEL_MSG_RECV",
+                "ADVERTISEMENT",
+                "NEW_ADVERT",
+            ]:
+                asyncio.create_task(self._send_webhook_for_event(event))
 
         except Exception as e:
             logger.error(f"Error handling event {event.type}: {e}", exc_info=True)
@@ -453,3 +468,21 @@ class EventHandler:
             except Exception:
                 logger.warning(f"Failed to parse sender_timestamp '{value}': {e}")
                 return None
+
+    async def _send_webhook_for_event(self, event: Event) -> None:
+        """
+        Send webhook for supported event types.
+
+        Args:
+            event: Event to send webhook for
+        """
+        try:
+            # Send the event payload directly to the webhook handler
+            # The webhook handler will route to the appropriate URL based on event type
+            await self.webhook_handler.send_event(
+                event_type=event.type,
+                data=event.payload,
+            )
+        except Exception as e:
+            # Don't let webhook errors affect event processing
+            logger.warning(f"Failed to send webhook for {event.type}: {e}")

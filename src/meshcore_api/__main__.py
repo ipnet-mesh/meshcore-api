@@ -18,6 +18,7 @@ from .subscriber.metrics_updater import update_database_metrics
 from .utils.logging import setup_logging
 from .api.app import create_app
 from .api.dependencies import set_meshcore_instance, set_config_instance
+from .webhook import WebhookHandler
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class Application:
         self.config = config
         self.meshcore: Optional[MeshCoreInterface] = None
         self.event_handler: Optional[EventHandler] = None
+        self.webhook_handler: Optional[WebhookHandler] = None
         self.cleanup_task: Optional[asyncio.Task] = None
         self.metrics_task: Optional[asyncio.Task] = None
         self.api_server_task: Optional[asyncio.Task] = None
@@ -86,8 +88,26 @@ class Application:
         if self.config.metrics_enabled:
             metrics.set_connection_status(True)
 
+        # Initialize webhook handler if any webhook URLs are configured
+        if any([
+            self.config.webhook_message_direct,
+            self.config.webhook_message_channel,
+            self.config.webhook_advertisement,
+        ]):
+            logger.info("Initializing webhook handler")
+            self.webhook_handler = WebhookHandler(
+                message_direct_url=self.config.webhook_message_direct,
+                message_channel_url=self.config.webhook_message_channel,
+                advertisement_url=self.config.webhook_advertisement,
+                timeout=self.config.webhook_timeout,
+                retry_count=self.config.webhook_retry_count,
+            )
+
         # Initialize event handler (needs meshcore for contact lookups)
-        self.event_handler = EventHandler(meshcore=self.meshcore)
+        self.event_handler = EventHandler(
+            meshcore=self.meshcore,
+            webhook_handler=self.webhook_handler,
+        )
 
         # Subscribe to events
         logger.info("Subscribing to MeshCore events...")
@@ -149,6 +169,10 @@ class Application:
                 await self.metrics_task
             except asyncio.CancelledError:
                 pass
+
+        # Close webhook handler
+        if self.webhook_handler:
+            await self.webhook_handler.close()
 
         # Disconnect from MeshCore
         if self.meshcore:

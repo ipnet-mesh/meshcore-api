@@ -43,6 +43,13 @@ class Config:
     log_level: str = "INFO"
     log_format: str = "json"  # json|text
 
+    # === Webhooks ===
+    webhook_message_direct: Optional[str] = None
+    webhook_message_channel: Optional[str] = None
+    webhook_advertisement: Optional[str] = None
+    webhook_timeout: int = 5
+    webhook_retry_count: int = 3
+
     @classmethod
     def from_args_and_env(cls, cli_args: Optional[dict] = None) -> "Config":
         """
@@ -194,6 +201,34 @@ class Config:
             help="Log output format"
         )
 
+        # Webhook arguments
+        webhook_group = parser.add_argument_group('Webhooks')
+        webhook_group.add_argument(
+            "--webhook-message-direct",
+            type=str,
+            help="Webhook URL for direct/contact messages"
+        )
+        webhook_group.add_argument(
+            "--webhook-message-channel",
+            type=str,
+            help="Webhook URL for channel messages"
+        )
+        webhook_group.add_argument(
+            "--webhook-advertisement",
+            type=str,
+            help="Webhook URL for node advertisements"
+        )
+        webhook_group.add_argument(
+            "--webhook-timeout",
+            type=int,
+            help="Webhook HTTP request timeout in seconds"
+        )
+        webhook_group.add_argument(
+            "--webhook-retry-count",
+            type=int,
+            help="Number of webhook retry attempts on failure"
+        )
+
         # Only parse args if not provided
         if cli_args is None:
             args = parser.parse_args()
@@ -221,6 +256,11 @@ class Config:
                 'no_write': cli_args.get('enable_write') is False if 'enable_write' in cli_args else False,
                 'log_level': cli_args.get('log_level'),
                 'log_format': cli_args.get('log_format'),
+                'webhook_message_direct': cli_args.get('webhook_message_direct'),
+                'webhook_message_channel': cli_args.get('webhook_message_channel'),
+                'webhook_advertisement': cli_args.get('webhook_advertisement'),
+                'webhook_timeout': cli_args.get('webhook_timeout'),
+                'webhook_retry_count': cli_args.get('webhook_retry_count'),
             })
 
         # Helper function to get value with priority: CLI > Env > Default
@@ -312,6 +352,22 @@ class Config:
             args.log_format, "MESHCORE_LOG_FORMAT", config.log_format
         )
 
+        config.webhook_message_direct = get_value(
+            args.webhook_message_direct, "WEBHOOK_MESSAGE_DIRECT", config.webhook_message_direct
+        )
+        config.webhook_message_channel = get_value(
+            args.webhook_message_channel, "WEBHOOK_MESSAGE_CHANNEL", config.webhook_message_channel
+        )
+        config.webhook_advertisement = get_value(
+            args.webhook_advertisement, "WEBHOOK_ADVERTISEMENT", config.webhook_advertisement
+        )
+        config.webhook_timeout = get_value(
+            args.webhook_timeout, "WEBHOOK_TIMEOUT", config.webhook_timeout, int
+        )
+        config.webhook_retry_count = get_value(
+            args.webhook_retry_count, "WEBHOOK_RETRY_COUNT", config.webhook_retry_count, int
+        )
+
         return config
 
     def display(self) -> str:
@@ -354,5 +410,19 @@ class Config:
             f"    Level: {self.log_level}",
             f"    Format: {self.log_format}",
         ])
+
+        # Add webhook configuration if any URLs are configured
+        if any([self.webhook_message_direct, self.webhook_message_channel, self.webhook_advertisement]):
+            lines.append("  Webhooks:")
+            if self.webhook_message_direct:
+                lines.append(f"    Direct Messages: {self.webhook_message_direct}")
+            if self.webhook_message_channel:
+                lines.append(f"    Channel Messages: {self.webhook_message_channel}")
+            if self.webhook_advertisement:
+                lines.append(f"    Advertisements: {self.webhook_advertisement}")
+            lines.extend([
+                f"    Timeout: {self.webhook_timeout}s",
+                f"    Retry Count: {self.webhook_retry_count}",
+            ])
 
         return "\n".join(lines)

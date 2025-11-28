@@ -92,6 +92,31 @@ def cli():
     default=None,
     help="Enable/disable write operations (default: enabled)",
 )
+@click.option(
+    "--webhook-message-direct",
+    type=str,
+    help="Webhook URL for direct/contact messages",
+)
+@click.option(
+    "--webhook-message-channel",
+    type=str,
+    help="Webhook URL for channel messages",
+)
+@click.option(
+    "--webhook-advertisement",
+    type=str,
+    help="Webhook URL for node advertisements",
+)
+@click.option(
+    "--webhook-timeout",
+    type=int,
+    help="Webhook HTTP request timeout in seconds (default: 5)",
+)
+@click.option(
+    "--webhook-retry-count",
+    type=int,
+    help="Number of webhook retry attempts on failure (default: 3)",
+)
 def server(**kwargs):
     """Start the MeshCore API server."""
     from .__main__ import Application
