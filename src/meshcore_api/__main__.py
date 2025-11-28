@@ -196,6 +196,7 @@ class Application:
                 title=self.config.api_title,
                 version=self.config.api_version,
                 enable_metrics=self.config.metrics_enabled,
+                bearer_token=self.config.api_bearer_token,
             )
 
             # Configure uvicorn

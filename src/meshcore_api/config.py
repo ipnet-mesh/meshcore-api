@@ -32,6 +32,7 @@ class Config:
     api_port: int = 8000
     api_title: str = "MeshCore API"
     api_version: str = "1.0.0"
+    api_bearer_token: Optional[str] = None
 
     # === Prometheus ===
     metrics_enabled: bool = True
@@ -172,6 +173,11 @@ class Config:
             type=str,
             help="API version"
         )
+        api_group.add_argument(
+            "--api-bearer-token",
+            type=str,
+            help="Bearer token for API authentication (if set, all endpoints except /docs, /redoc require authentication)"
+        )
 
         # Prometheus arguments
         metrics_group = parser.add_argument_group('Metrics')
@@ -270,6 +276,7 @@ class Config:
                 'api_port': cli_args.get('api_port'),
                 'api_title': cli_args.get('api_title'),
                 'api_version': cli_args.get('api_version'),
+                'api_bearer_token': cli_args.get('api_bearer_token'),
                 'no_metrics': cli_args.get('metrics') is False if 'metrics' in cli_args else False,
                 'no_write': cli_args.get('enable_write') is False if 'enable_write' in cli_args else False,
                 'log_level': cli_args.get('log_level'),
@@ -357,6 +364,9 @@ class Config:
         config.api_version = get_value(
             args.api_version, "MESHCORE_API_VERSION", config.api_version
         )
+        config.api_bearer_token = get_value(
+            args.api_bearer_token, "MESHCORE_API_BEARER_TOKEN", config.api_bearer_token
+        )
 
         config.metrics_enabled = not args.no_metrics and get_value(
             None, "MESHCORE_METRICS_ENABLED", config.metrics_enabled, bool
@@ -437,6 +447,7 @@ class Config:
             "  API:",
             f"    Host: {self.api_host}",
             f"    Port: {self.api_port}",
+            f"    Authentication: {'Enabled (Bearer token required)' if self.api_bearer_token else 'Disabled (Public API)'}",
             f"    Metrics: {'Enabled' if self.metrics_enabled else 'Disabled'}",
             f"    Write Operations: {'Enabled' if self.enable_write else 'Disabled (Read-only mode)'}",
             "  Logging:",

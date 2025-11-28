@@ -28,6 +28,7 @@ Common options:
 - `--serial-port`: Serial port for MeshCore device
 - `--use-mock`: Use mock MeshCore for testing
 - `--api-host`, `--api-port`: Configure API server
+- `--api-bearer-token`: Bearer token for API authentication (optional)
 - `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
 - `--db-path`: Path to SQLite database
 
@@ -208,6 +209,63 @@ Features:
 - **Non-blocking**: Webhook failures don't affect event processing
 - **Retry logic**: Exponential backoff (2s, 4s, 8s delays)
 - **Logging**: Debug/warning/error logs for all webhook attempts
+
+## Bearer Authentication
+
+The application supports optional Bearer token authentication for the REST API.
+
+### Configuration
+
+When a bearer token is configured, all API endpoints (except `/docs`, `/redoc`, `/openapi.json`, and `/metrics`) require authentication.
+
+**Environment Variable:**
+```bash
+export MESHCORE_API_BEARER_TOKEN="your-secret-token-here"
+meshcore_api server --use-mock
+```
+
+**CLI Argument:**
+```bash
+meshcore_api server --use-mock --api-bearer-token "your-secret-token-here"
+```
+
+**Priority:** CLI arguments > Environment variables > Not configured (public API)
+
+### Making Authenticated Requests
+
+When authentication is enabled, include the Bearer token in the `Authorization` header:
+
+```bash
+# Health check
+curl -H "Authorization: Bearer your-secret-token-here" \
+  http://localhost:8000/api/v1/health
+
+# Get nodes
+curl -H "Authorization: Bearer your-secret-token-here" \
+  http://localhost:8000/api/v1/nodes
+
+# Set a node tag
+curl -X PUT \
+  -H "Authorization: Bearer your-secret-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{"value_type": "string", "value": "Gateway Node"}' \
+  http://localhost:8000/api/v1/nodes/{public_key}/tags/friendly_name
+```
+
+### Public Endpoints
+
+These endpoints are always accessible without authentication:
+- `/docs` - Swagger UI documentation
+- `/redoc` - ReDoc documentation
+- `/openapi.json` - OpenAPI schema
+- `/metrics` - Prometheus metrics endpoint
+
+### Security Notes
+
+- Store bearer tokens securely (environment variables, secrets management)
+- Use HTTPS in production to protect tokens in transit
+- Rotate tokens periodically
+- Never commit tokens to version control
 
 ## REST API - Public Key Requirements
 

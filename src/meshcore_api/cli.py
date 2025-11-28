@@ -117,6 +117,11 @@ def cli():
     type=int,
     help="Number of webhook retry attempts on failure (default: 3)",
 )
+@click.option(
+    "--api-bearer-token",
+    type=str,
+    help="Bearer token for API authentication (if set, all endpoints except /docs, /redoc require authentication)",
+)
 def server(**kwargs):
     """Start the MeshCore API server."""
     from .__main__ import Application
