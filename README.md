@@ -263,6 +263,11 @@ WEBHOOK_MESSAGE_CHANNEL=https://example.com/webhooks/channel
 WEBHOOK_ADVERTISEMENT=https://example.com/webhooks/adverts
 WEBHOOK_TIMEOUT=10              # HTTP timeout in seconds (default: 5)
 WEBHOOK_RETRY_COUNT=5           # Number of retry attempts (default: 3)
+
+# JSONPath expressions to filter webhook payloads (default: "$" for full payload)
+WEBHOOK_MESSAGE_DIRECT_JSONPATH="$.data.text"
+WEBHOOK_MESSAGE_CHANNEL_JSONPATH="$.data.text"
+WEBHOOK_ADVERTISEMENT_JSONPATH="$"
 ```
 
 **CLI Arguments:**
@@ -273,7 +278,10 @@ meshcore_api server \
   --webhook-message-channel https://example.com/webhooks/channel \
   --webhook-advertisement https://example.com/webhooks/adverts \
   --webhook-timeout 10 \
-  --webhook-retry-count 5
+  --webhook-retry-count 5 \
+  --webhook-message-direct-jsonpath "$.data.text" \
+  --webhook-message-channel-jsonpath "$.data.text" \
+  --webhook-advertisement-jsonpath "$"
 ```
 
 ### Webhook Payload Format
@@ -321,6 +329,43 @@ All webhooks send HTTP POST requests with JSON payloads:
   }
 }
 ```
+
+### JSONPath Payload Filtering
+
+You can use JSONPath expressions to filter which portion of the webhook payload to send. This is particularly useful for integrating with AI agents or services that expect simple text input rather than complex JSON structures.
+
+**Default Behavior:**
+- Without JSONPath configuration, the entire payload (shown above) is sent
+- Default JSONPath: `$` (root object)
+
+**Common Use Cases:**
+
+1. **Send only message text (ideal for AI agents):**
+   ```bash
+   --webhook-message-channel-jsonpath "$.data.text"
+   ```
+   Sends: `"Hello from the mesh!"` (as plain text)
+
+2. **Send only the data object:**
+   ```bash
+   --webhook-message-channel-jsonpath "$.data"
+   ```
+   Sends: `{"channel_idx": 4, "text": "Hello from the mesh!", "SNR": 8.5, ...}`
+
+3. **Send entire payload (default):**
+   ```bash
+   --webhook-message-channel-jsonpath "$"
+   ```
+   Sends: `{"event_type": "CHANNEL_MSG_RECV", "timestamp": "...", "data": {...}}`
+
+**Payload Types:**
+- **Primitive values** (string, number, boolean): Sent as plain text or JSON value
+- **Objects/Arrays**: Sent as JSON with `Content-Type: application/json`
+
+**Error Handling:**
+- Invalid JSONPath expression: Falls back to full payload
+- Empty result: Sends full payload
+- All errors logged without affecting event processing
 
 ### Error Handling & Retries
 
