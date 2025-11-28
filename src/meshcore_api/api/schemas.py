@@ -280,12 +280,23 @@ class SendTelemetryRequestRequest(BaseModel):
 # Command Response Schemas
 # ============================================================================
 
+class QueueInfoSchema(BaseModel):
+    """Information about a command's position in the queue."""
+
+    position: int = Field(..., description="Position in queue")
+    estimated_wait_seconds: float = Field(..., description="Estimated wait time in seconds")
+    queue_size: int = Field(..., description="Current queue size")
+    debounced: bool = Field(..., description="Whether command was debounced")
+    original_request_time: Optional[str] = Field(None, description="Original request time for debounced commands")
+
+
 class SendMessageResponse(BaseModel):
     """Response from sending a message."""
 
     success: bool
     message: str
     estimated_delivery_ms: Optional[int] = None
+    queue_info: Optional[QueueInfoSchema] = Field(None, description="Queue information")
 
 
 class SendChannelMessageResponse(BaseModel):
@@ -293,6 +304,7 @@ class SendChannelMessageResponse(BaseModel):
 
     success: bool
     message: str
+    queue_info: Optional[QueueInfoSchema] = Field(None, description="Queue information")
 
 
 class SendAdvertResponse(BaseModel):
@@ -300,6 +312,7 @@ class SendAdvertResponse(BaseModel):
 
     success: bool
     message: str
+    queue_info: Optional[QueueInfoSchema] = Field(None, description="Queue information")
 
 
 class SendTracePathResponse(BaseModel):
@@ -308,6 +321,7 @@ class SendTracePathResponse(BaseModel):
     success: bool
     message: str
     initiator_tag: Optional[int] = None
+    queue_info: Optional[QueueInfoSchema] = Field(None, description="Queue information")
 
 
 class PingResponse(BaseModel):
@@ -315,6 +329,7 @@ class PingResponse(BaseModel):
 
     success: bool
     message: str
+    queue_info: Optional[QueueInfoSchema] = Field(None, description="Queue information")
 
 
 class SendTelemetryRequestResponse(BaseModel):
@@ -322,11 +337,24 @@ class SendTelemetryRequestResponse(BaseModel):
 
     success: bool
     message: str
+    queue_info: Optional[QueueInfoSchema] = Field(None, description="Queue information")
 
 
 # ============================================================================
 # Health Check Schemas
 # ============================================================================
+
+class QueueStatsSchema(BaseModel):
+    """Queue statistics for health check."""
+
+    queue_size: int = Field(..., description="Current queue size")
+    max_queue_size: int = Field(..., description="Maximum queue size")
+    rate_limit_tokens_available: float = Field(..., description="Available rate limit tokens")
+    debounce_cache_size: int = Field(..., description="Debounce cache size")
+    commands_processed_total: int = Field(..., description="Total commands processed")
+    commands_dropped_total: int = Field(..., description="Total commands dropped")
+    commands_debounced_total: int = Field(..., description="Total commands debounced")
+
 
 class HealthCheckResponse(BaseModel):
     """Response model for overall health check."""
@@ -336,6 +364,7 @@ class HealthCheckResponse(BaseModel):
     database_connected: bool
     uptime_seconds: float
     events_processed: int
+    queue: Optional[QueueStatsSchema] = Field(None, description="Command queue statistics")
 
 
 class DatabaseHealthResponse(BaseModel):

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database.engine import session_scope
 from ..meshcore.interface import MeshCoreInterface
+from ..queue import CommandQueueManager
 from ..config import Config
 
 
@@ -14,6 +15,9 @@ _meshcore_instance: Optional[MeshCoreInterface] = None
 
 # Global Config instance (set during app startup)
 _config_instance: Optional[Config] = None
+
+# Global CommandQueueManager instance (set during app startup)
+_command_queue_instance: Optional[CommandQueueManager] = None
 
 
 def set_meshcore_instance(meshcore: MeshCoreInterface) -> None:
@@ -82,6 +86,42 @@ def get_meshcore() -> MeshCoreInterface:
     if _meshcore_instance is None:
         raise RuntimeError("MeshCore instance not initialized")
     return _meshcore_instance
+
+
+def set_command_queue_instance(command_queue: CommandQueueManager) -> None:
+    """
+    Set the global CommandQueueManager instance.
+
+    This is called during application startup to make the CommandQueueManager
+    instance available to all API routes.
+
+    Args:
+        command_queue: The CommandQueueManager instance
+    """
+    global _command_queue_instance
+    _command_queue_instance = command_queue
+
+
+def get_command_queue() -> CommandQueueManager:
+    """
+    Dependency to get the CommandQueueManager instance.
+
+    Returns:
+        CommandQueueManager instance
+
+    Raises:
+        RuntimeError: If CommandQueueManager instance has not been set
+
+    Example:
+        ```python
+        @router.post("/commands/ping")
+        def ping_node(queue: CommandQueueManager = Depends(get_command_queue)):
+            queue.enqueue(CommandType.PING, {...})
+        ```
+    """
+    if _command_queue_instance is None:
+        raise RuntimeError("CommandQueueManager instance not initialized")
+    return _command_queue_instance
 
 
 def check_write_enabled() -> None:

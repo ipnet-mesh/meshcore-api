@@ -54,6 +54,18 @@ class Config:
     webhook_message_channel_jsonpath: str = "$"
     webhook_advertisement_jsonpath: str = "$"
 
+    # === Command Queue ===
+    queue_max_size: int = 100
+    queue_full_behavior: str = "reject"  # reject|drop_oldest
+    queue_timeout_seconds: float = 30.0
+    rate_limit_enabled: bool = True
+    rate_limit_per_second: float = 0.0333 # Two commands per 60 seconds
+    rate_limit_burst: int = 2 # Allow short bursts of up to 2 commands
+    debounce_enabled: bool = True
+    debounce_window_seconds: float = 5.0
+    debounce_cache_max_size: int = 1000
+    debounce_commands: str = "send_message,send_channel_message,send_advert"
+
     @classmethod
     def from_args_and_env(cls, cli_args: Optional[dict] = None) -> "Config":
         """
@@ -253,6 +265,60 @@ class Config:
             help="JSONPath expression to filter advertisement webhook payload (default: '$' for entire payload)"
         )
 
+        # Command Queue arguments
+        queue_group = parser.add_argument_group('Command Queue')
+        queue_group.add_argument(
+            "--queue-max-size",
+            type=int,
+            help="Maximum command queue size"
+        )
+        queue_group.add_argument(
+            "--queue-full-behavior",
+            type=str,
+            choices=["reject", "drop_oldest"],
+            help="Behavior when queue is full"
+        )
+        queue_group.add_argument(
+            "--queue-timeout",
+            type=float,
+            help="Maximum time a command waits in queue (seconds)"
+        )
+        queue_group.add_argument(
+            "--rate-limit-per-second",
+            type=float,
+            help="Commands per second (average rate)"
+        )
+        queue_group.add_argument(
+            "--rate-limit-burst",
+            type=int,
+            help="Maximum burst size for rate limiting"
+        )
+        queue_group.add_argument(
+            "--no-rate-limit",
+            action="store_true",
+            help="Disable rate limiting"
+        )
+        queue_group.add_argument(
+            "--debounce-window",
+            type=float,
+            help="Debounce window in seconds"
+        )
+        queue_group.add_argument(
+            "--debounce-cache-size",
+            type=int,
+            help="Maximum debounce cache size"
+        )
+        queue_group.add_argument(
+            "--debounce-commands",
+            type=str,
+            help="Comma-separated list of command types to debounce"
+        )
+        queue_group.add_argument(
+            "--no-debounce",
+            action="store_true",
+            help="Disable debouncing"
+        )
+
         # Only parse args if not provided
         if cli_args is None:
             args = parser.parse_args()
@@ -289,6 +355,16 @@ class Config:
                 'webhook_message_direct_jsonpath': cli_args.get('webhook_message_direct_jsonpath'),
                 'webhook_message_channel_jsonpath': cli_args.get('webhook_message_channel_jsonpath'),
                 'webhook_advertisement_jsonpath': cli_args.get('webhook_advertisement_jsonpath'),
+                'queue_max_size': cli_args.get('queue_max_size'),
+                'queue_full_behavior': cli_args.get('queue_full_behavior'),
+                'queue_timeout': cli_args.get('queue_timeout'),
+                'rate_limit_per_second': cli_args.get('rate_limit_per_second'),
+                'rate_limit_burst': cli_args.get('rate_limit_burst'),
+                'no_rate_limit': cli_args.get('no_rate_limit', False),
+                'debounce_window': cli_args.get('debounce_window'),
+                'debounce_cache_size': cli_args.get('debounce_cache_size'),
+                'debounce_commands': cli_args.get('debounce_commands'),
+                'no_debounce': cli_args.get('no_debounce', False),
             })
 
         # Helper function to get value with priority: CLI > Env > Default
@@ -411,6 +487,40 @@ class Config:
             config.webhook_advertisement_jsonpath
         )
 
+        config.queue_max_size = get_value(
+            args.queue_max_size, "MESHCORE_QUEUE_MAX_SIZE", config.queue_max_size, int
+        )
+        config.queue_full_behavior = get_value(
+            args.queue_full_behavior, "MESHCORE_QUEUE_FULL_BEHAVIOR", config.queue_full_behavior
+        )
+        config.queue_timeout_seconds = get_value(
+            args.queue_timeout, "MESHCORE_QUEUE_TIMEOUT_SECONDS", config.queue_timeout_seconds, float
+        )
+        config.rate_limit_enabled = not args.no_rate_limit and get_value(
+            None, "MESHCORE_RATE_LIMIT_ENABLED", config.rate_limit_enabled, bool
+        )
+        config.rate_limit_per_second = get_value(
+            args.rate_limit_per_second, "MESHCORE_RATE_LIMIT_PER_SECOND",
+            config.rate_limit_per_second, float
+        )
+        config.rate_limit_burst = get_value(
+            args.rate_limit_burst, "MESHCORE_RATE_LIMIT_BURST", config.rate_limit_burst, int
+        )
+        config.debounce_enabled = not args.no_debounce and get_value(
+            None, "MESHCORE_DEBOUNCE_ENABLED", config.debounce_enabled, bool
+        )
+        config.debounce_window_seconds = get_value(
+            args.debounce_window, "MESHCORE_DEBOUNCE_WINDOW_SECONDS",
+            config.debounce_window_seconds, float
+        )
+        config.debounce_cache_max_size = get_value(
+            args.debounce_cache_size, "MESHCORE_DEBOUNCE_CACHE_MAX_SIZE",
+            config.debounce_cache_max_size, int
+        )
+        config.debounce_commands = get_value(
+            args.debounce_commands, "MESHCORE_DEBOUNCE_COMMANDS", config.debounce_commands
+        )
+
         return config
 
     def display(self) -> str:
@@ -470,6 +580,27 @@ class Config:
             lines.extend([
                 f"    Timeout: {self.webhook_timeout}s",
                 f"    Retry Count: {self.webhook_retry_count}",
+            ])
+
+        # Add queue configuration
+        lines.extend([
+            "  Command Queue:",
+            f"    Max Size: {self.queue_max_size}",
+            f"    Full Behavior: {self.queue_full_behavior}",
+            f"    Timeout: {self.queue_timeout_seconds}s",
+            f"    Rate Limiting: {'Enabled' if self.rate_limit_enabled else 'Disabled'}",
+        ])
+        if self.rate_limit_enabled:
+            lines.extend([
+                f"      Rate: {self.rate_limit_per_second} commands/sec",
+                f"      Burst: {self.rate_limit_burst}",
+            ])
+        lines.append(f"    Debouncing: {'Enabled' if self.debounce_enabled else 'Disabled'}")
+        if self.debounce_enabled:
+            lines.extend([
+                f"      Window: {self.debounce_window_seconds}s",
+                f"      Cache Size: {self.debounce_cache_max_size}",
+                f"      Commands: {self.debounce_commands}",
             ])
 
         return "\n".join(lines)

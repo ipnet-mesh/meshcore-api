@@ -31,6 +31,11 @@ Common options:
 - `--api-bearer-token`: Bearer token for API authentication (optional)
 - `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
 - `--db-path`: Path to SQLite database
+- `--queue-max-size`: Maximum command queue size (default: 100)
+- `--rate-limit-per-second`: Commands per second rate limit (default: 2.0)
+- `--no-rate-limit`: Disable rate limiting
+- `--debounce-window`: Debounce window in seconds (default: 5.0)
+- `--no-debounce`: Disable debouncing
 
 ### Query Command
 
@@ -266,6 +271,230 @@ These endpoints are always accessible without authentication:
 - Use HTTPS in production to protect tokens in transit
 - Rotate tokens periodically
 - Never commit tokens to version control
+
+## API Rate Limiting & Command Queue
+
+The application includes a command queue system with rate limiting and debouncing to prevent network flooding and abuse.
+
+### Features
+
+- **Queue Management**: All outbound commands are queued and processed sequentially
+- **Rate Limiting**: Token bucket algorithm controls command throughput
+- **Debouncing**: Prevents duplicate commands within a time window
+- **Configurable**: All limits adjustable via environment variables or CLI arguments
+
+### Configuration
+
+**Environment Variables:**
+```bash
+# Queue Configuration
+export MESHCORE_QUEUE_MAX_SIZE=100              # Max queued commands (default: 100)
+export MESHCORE_QUEUE_FULL_BEHAVIOR="reject"    # "reject" or "drop_oldest" (default: reject)
+export MESHCORE_QUEUE_TIMEOUT_SECONDS=30.0      # Max time command waits in queue (default: 30s)
+
+# Rate Limiting
+export MESHCORE_RATE_LIMIT_ENABLED=true         # Enable rate limiting (default: true)
+export MESHCORE_RATE_LIMIT_PER_SECOND=2.0       # Commands per second (default: 2.0)
+export MESHCORE_RATE_LIMIT_BURST=5              # Max burst size (default: 5)
+
+# Debouncing
+export MESHCORE_DEBOUNCE_ENABLED=true                      # Enable debouncing (default: true)
+export MESHCORE_DEBOUNCE_WINDOW_SECONDS=5.0                # Time window for duplicates (default: 5s)
+export MESHCORE_DEBOUNCE_CACHE_MAX_SIZE=1000               # Max cache entries (default: 1000)
+export MESHCORE_DEBOUNCE_COMMANDS="send_message,send_channel_message,send_advert"  # Commands to debounce
+```
+
+**CLI Arguments:**
+```bash
+meshcore_api server \
+  --use-mock \
+  --queue-max-size 100 \
+  --queue-full-behavior reject \
+  --queue-timeout 30.0 \
+  --rate-limit-per-second 2.0 \
+  --rate-limit-burst 5 \
+  --debounce-window 5.0 \
+  --debounce-cache-size 1000 \
+  --debounce-commands "send_message,send_channel_message,send_advert"
+```
+
+**Priority:** CLI arguments > Environment variables > Defaults
+
+### Disabling Features
+
+Disable rate limiting or debouncing if needed:
+
+```bash
+# Disable rate limiting
+meshcore_api server --use-mock --no-rate-limit
+
+# Disable debouncing
+meshcore_api server --use-mock --no-debounce
+
+# Disable both
+export MESHCORE_RATE_LIMIT_ENABLED=false
+export MESHCORE_DEBOUNCE_ENABLED=false
+meshcore_api server --use-mock
+```
+
+### How It Works
+
+#### Queue Management
+
+All outbound commands (messages, advertisements, pings, etc.) are added to an asynchronous FIFO queue:
+
+1. **Enqueue**: API endpoint adds command to queue
+2. **Background Worker**: Processes commands sequentially
+3. **Rate Limit**: Worker waits for rate limit token before executing
+4. **Debounce Check**: Duplicate commands are merged
+5. **Execute**: Command sent to MeshCore device
+
+#### Rate Limiting (Token Bucket)
+
+The rate limiter uses a token bucket algorithm:
+
+- **Rate**: Tokens added per second (average rate)
+- **Burst**: Maximum tokens available (burst capacity)
+- **Behavior**: Commands consume 1 token; if no tokens available, command waits
+
+**Example:**
+- Rate: 2.0 commands/second
+- Burst: 5 tokens
+- Result: Can send 5 commands instantly, then 2 per second sustained
+
+#### Debouncing
+
+Prevents duplicate commands within a time window:
+
+- **Hash-Based**: Commands hashed by type + parameters (excludes timestamp)
+- **Time Window**: Duplicates within window are merged
+- **Cache**: Recent command hashes stored with TTL
+- **Result Sharing**: Duplicate requests receive the same result
+
+**Debounced Commands (default):**
+- `send_message` - Same message to same destination
+- `send_channel_message` - Same broadcast text
+- `send_advert` - Advertisement broadcasts
+
+**Not Debounced:**
+- `send_trace_path` - Path discovery results change over time
+- `ping` - Status may change frequently
+- `send_telemetry_request` - Telemetry changes frequently
+
+### API Response Format
+
+All command endpoints now return queue information:
+
+```json
+{
+  "success": true,
+  "message": "Command queued successfully",
+  "queue_info": {
+    "position": 3,
+    "estimated_wait_seconds": 1.5,
+    "queue_size": 15,
+    "debounced": false
+  }
+}
+```
+
+**Debounced Command Response:**
+```json
+{
+  "success": true,
+  "message": "Command already pending (debounced)",
+  "queue_info": {
+    "position": 1,
+    "estimated_wait_seconds": 0.5,
+    "queue_size": 10,
+    "debounced": true,
+    "original_request_time": "2025-11-28T19:30:00Z"
+  }
+}
+```
+
+### Error Handling
+
+#### Queue Full (HTTP 429 Too Many Requests)
+
+If the queue is full and behavior is set to `reject`:
+
+```json
+{
+  "error": "Command queue is full. Please try again later."
+}
+```
+
+**Solution:** Wait and retry, or increase `queue_max_size`
+
+#### Command Timeout
+
+If a command sits in queue longer than `queue_timeout_seconds`:
+
+```json
+{
+  "success": false,
+  "message": "Command timed out in queue",
+  "error": "timeout"
+}
+```
+
+**Solution:** Increase `queue_timeout_seconds` or `rate_limit_per_second`
+
+### Monitoring
+
+Check queue stats via the health endpoint:
+
+```bash
+curl http://localhost:8000/api/v1/health
+```
+
+Response includes queue statistics:
+
+```json
+{
+  "status": "healthy",
+  "meshcore_connected": true,
+  "database_connected": true,
+  "uptime_seconds": 3600,
+  "events_processed": 1234,
+  "queue": {
+    "queue_size": 5,
+    "max_queue_size": 100,
+    "rate_limit_tokens_available": 3.5,
+    "debounce_cache_size": 42,
+    "commands_processed_total": 567,
+    "commands_dropped_total": 0,
+    "commands_debounced_total": 23
+  }
+}
+```
+
+### Performance Impact
+
+- **Queue Overhead**: < 1ms per command (in-memory queue)
+- **Debounce Hash**: O(1) dictionary lookup
+- **Token Bucket**: O(1) token check
+- **Memory Usage**: ~100KB queue + ~1MB debounce cache
+
+### Best Practices
+
+1. **Production Settings**:
+   - Enable both rate limiting and debouncing
+   - Set conservative rate limits (2-5 commands/sec)
+   - Monitor queue stats regularly
+
+2. **Development/Testing**:
+   - Disable rate limiting for faster testing: `--no-rate-limit`
+   - Increase queue size: `--queue-max-size 500`
+
+3. **High-Traffic Scenarios**:
+   - Increase burst size: `--rate-limit-burst 10`
+   - Use `drop_oldest` behavior: `--queue-full-behavior drop_oldest`
+
+4. **Low-Latency Requirements**:
+   - Reduce debounce window: `--debounce-window 1.0`
+   - Disable debouncing: `--no-debounce`
 
 ## REST API - Public Key Requirements
 

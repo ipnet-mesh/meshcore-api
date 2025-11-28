@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db, get_meshcore
-from ..schemas import HealthCheckResponse, DatabaseHealthResponse, MeshCoreHealthResponse
+from ..dependencies import get_db, get_meshcore, get_command_queue
+from ..schemas import HealthCheckResponse, DatabaseHealthResponse, MeshCoreHealthResponse, QueueStatsSchema
 from ...database.models import Node, Message, Advertisement, TracePath, Telemetry, EventLog
 from ...meshcore.interface import MeshCoreInterface
+from ...queue import CommandQueueManager
 
 router = APIRouter()
 
@@ -39,6 +40,7 @@ def get_events_processed() -> int:
 async def health_check(
     db: Session = Depends(get_db),
     meshcore: MeshCoreInterface = Depends(get_meshcore),
+    queue_manager: CommandQueueManager = Depends(get_command_queue),
 ) -> HealthCheckResponse:
     """
     Get overall application health status.
@@ -60,6 +62,9 @@ async def health_check(
     # Calculate uptime
     uptime = time.time() - _start_time
 
+    # Get queue stats
+    queue_stats = queue_manager.get_stats()
+
     # Overall status
     overall_status = "healthy" if (db_connected and meshcore_connected) else "unhealthy"
 
@@ -69,6 +74,7 @@ async def health_check(
         database_connected=db_connected,
         uptime_seconds=uptime,
         events_processed=_events_processed,
+        queue=QueueStatsSchema(**queue_stats.to_dict()),
     )
 
 
