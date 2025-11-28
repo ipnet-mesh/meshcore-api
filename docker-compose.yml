@@ -11,6 +11,7 @@ services:
       MESHCORE_RETENTION_DAYS: "30"
       MESHCORE_SERIAL_PORT: "/dev/ttyUSB0"  # uncomment and set when using real hardware
       ENABLE_METRICS: "true"
+      # WEBHOOK_MESSAGE_DIRECT: http://does-not-exist:5000/webhook
     ports:
       - "8080:8080"
     volumes:

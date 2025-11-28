@@ -59,8 +59,8 @@ class Config:
     queue_full_behavior: str = "reject"  # reject|drop_oldest
     queue_timeout_seconds: float = 30.0
     rate_limit_enabled: bool = True
-    rate_limit_per_second: float = 2.0
-    rate_limit_burst: int = 5
+    rate_limit_per_second: float = 0.0333 # Two commands per 60 seconds
+    rate_limit_burst: int = 2 # Allow short bursts of up to 2 commands
     debounce_enabled: bool = True
     debounce_window_seconds: float = 5.0
     debounce_cache_max_size: int = 1000
