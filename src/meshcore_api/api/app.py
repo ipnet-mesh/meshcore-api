@@ -1,22 +1,122 @@
 """FastAPI application factory and configuration."""
 
 import logging
+import secrets
 from typing import Optional
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .schemas import ErrorResponse
 
 logger = logging.getLogger(__name__)
 
 
+class BearerAuthMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to enforce Bearer token authentication.
+
+    If a bearer token is configured, all requests must include a valid
+    Authorization header with the Bearer token, except for excluded paths.
+    """
+
+    # Path prefixes that are always public (no authentication required)
+    EXCLUDED_PATH_PREFIXES = (
+        "/docs",
+        "/redoc",
+    )
+
+    # Exact paths that are always public (no authentication required)
+    EXCLUDED_EXACT_PATHS = {
+        "/openapi.json",
+        "/metrics",
+    }
+
+    def __init__(self, app, bearer_token: Optional[str] = None):
+        """
+        Initialize the Bearer authentication middleware.
+
+        Args:
+            app: The FastAPI application
+            bearer_token: The configured bearer token (if None, auth is disabled)
+        """
+        super().__init__(app)
+        self.bearer_token = bearer_token
+        self.auth_enabled = bearer_token is not None
+
+    async def dispatch(self, request: Request, call_next):
+        """
+        Process each request and validate Bearer token if configured.
+
+        Args:
+            request: The incoming request
+            call_next: The next middleware/handler in the chain
+
+        Returns:
+            Response from the next handler or 401 error
+        """
+        # Skip auth check if not configured
+        if not self.auth_enabled:
+            return await call_next(request)
+
+        # Skip auth check for excluded paths (prefix or exact match)
+        path = request.url.path
+        if path in self.EXCLUDED_EXACT_PATHS or path.startswith(self.EXCLUDED_PATH_PREFIXES):
+            return await call_next(request)
+
+        # Extract Authorization header
+        auth_header = request.headers.get("Authorization")
+
+        if not auth_header:
+            logger.warning(f"Missing Authorization header for {request.url.path}")
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "error": "Authentication required",
+                    "detail": "Missing Authorization header"
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Parse Bearer token
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            logger.warning(f"Invalid Authorization header format for {request.url.path}")
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "error": "Authentication required",
+                    "detail": "Invalid Authorization header format. Expected: 'Bearer <token>'"
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        provided_token = parts[1]
+
+        # Constant-time comparison to prevent timing attacks
+        if not secrets.compare_digest(provided_token, self.bearer_token):
+            logger.warning(f"Invalid bearer token for {request.url.path}")
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "error": "Authentication required",
+                    "detail": "Invalid bearer token"
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Token is valid, continue processing
+        return await call_next(request)
+
+
 def create_app(
     title: str = "MeshCore API",
     version: str = "1.0.0",
     enable_metrics: bool = True,
+    bearer_token: Optional[str] = None,
 ) -> FastAPI:
     """
     Create and configure the FastAPI application.
@@ -25,6 +125,7 @@ def create_app(
         title: API title for OpenAPI documentation
         version: API version
         enable_metrics: Whether to enable Prometheus metrics
+        bearer_token: Optional bearer token for API authentication
 
     Returns:
         Configured FastAPI application
@@ -59,7 +160,17 @@ Most endpoints require **full 64-character hexadecimal public keys**:
 
 ## Authentication
 
-Currently, this API does not require authentication. This may change in future versions.
+This API supports optional Bearer token authentication:
+- **When configured**: All endpoints require an `Authorization: Bearer <token>` header
+- **When not configured**: API is public and no authentication is required
+- **Excluded endpoints**: `/docs`, `/redoc`, `/openapi.json`, and `/metrics` are always public
+
+To configure authentication, set the `MESHCORE_API_BEARER_TOKEN` environment variable or use the `--api-bearer-token` CLI argument.
+
+Example authenticated request:
+```bash
+curl -H "Authorization: Bearer your-secret-token" http://localhost:8000/api/v1/health
+```
 
 ## Rate Limiting
 
@@ -122,6 +233,15 @@ Data is automatically cleaned up based on the configured retention period (defau
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # =========================================================================
+    # Bearer Authentication Middleware
+    # =========================================================================
+    if bearer_token:
+        app.add_middleware(BearerAuthMiddleware, bearer_token=bearer_token)
+        logger.info("Bearer token authentication enabled")
+    else:
+        logger.info("Bearer token authentication disabled - API is public")
 
     # =========================================================================
     # Exception Handlers
