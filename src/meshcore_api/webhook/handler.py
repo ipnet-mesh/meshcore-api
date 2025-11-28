@@ -83,11 +83,17 @@ class WebhookHandler:
         """
         Send HTTP POST to webhook URL with retry logic and exponential backoff.
 
+        Always attempts delivery at least once. If retry_count is 0, only the initial
+        attempt is made. If retry_count > 0, makes initial attempt plus up to retry_count
+        additional retries.
+
         Args:
             url: Webhook URL to POST to
             payload: JSON payload to send
         """
-        for attempt in range(self.retry_count):
+        total_attempts = self.retry_count + 1  # Initial attempt + retries
+
+        for attempt in range(total_attempts):
             try:
                 response = await self.client.post(
                     url, json=payload, headers={"Content-Type": "application/json"}
@@ -102,27 +108,28 @@ class WebhookHandler:
 
             except httpx.HTTPStatusError as e:
                 logger.warning(
-                    f"Webhook HTTP error (attempt {attempt + 1}/{self.retry_count}): "
+                    f"Webhook HTTP error (attempt {attempt + 1}/{total_attempts}): "
                     f"{e.response.status_code} - {url}"
                 )
             except httpx.TimeoutException:
                 logger.warning(
-                    f"Webhook timeout (attempt {attempt + 1}/{self.retry_count}): {url}"
+                    f"Webhook timeout (attempt {attempt + 1}/{total_attempts}): {url}"
                 )
             except Exception as e:
                 logger.warning(
-                    f"Webhook error (attempt {attempt + 1}/{self.retry_count}): "
+                    f"Webhook error (attempt {attempt + 1}/{total_attempts}): "
                     f"{type(e).__name__}: {e}"
                 )
 
-            # Exponential backoff: 2s, 4s, 8s
-            if attempt < self.retry_count - 1:
+            # Exponential backoff: 2s, 4s, 8s (only if there are more attempts)
+            if attempt < total_attempts - 1:
                 delay = 2 ** (attempt + 1)
                 await asyncio.sleep(delay)
 
-        # All retries exhausted
+        # All attempts exhausted
         logger.error(
-            f"Webhook failed after {self.retry_count} attempts: "
+            f"Webhook failed after {total_attempts} attempts "
+            f"(1 initial + {self.retry_count} retries): "
             f"{payload['event_type']} to {url}"
         )
 
