@@ -1,0 +1,61 @@
+{
+  "advertisement": {
+    "type": "ADVERTISEMENT",
+    "timestamp": "2025-11-29T10:00:00Z",
+    "data": {
+      "adv_type": "ADVERT_TYPE_NODE",
+      "public_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "name": "Test Gateway",
+      "flags": ["FLAG_REPEATER", "FLAG_CHAT"],
+      "gps": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "altitude": 100
+      }
+    }
+  },
+  "contact_message": {
+    "type": "CONTACT_MSG_RECV",
+    "timestamp": "2025-11-29T10:01:00Z",
+    "data": {
+      "pubkey_prefix": "aaaaaaaaaaaa",
+      "text": "Hello from the mesh network!",
+      "text_type": "TEXT_TYPE_PLAIN",
+      "SNR": 8.5,
+      "sender_timestamp": "2025-11-29T10:00:58Z"
+    }
+  },
+  "channel_message": {
+    "type": "CHANNEL_MSG_RECV",
+    "timestamp": "2025-11-29T10:02:00Z",
+    "data": {
+      "channel_idx": 4,
+      "text": "Broadcast to all nodes",
+      "text_type": "TEXT_TYPE_PLAIN",
+      "SNR": 7.2,
+      "sender_timestamp": "2025-11-29T10:01:58Z"
+    }
+  },
+  "telemetry": {
+    "type": "TELEMETRY_RESPONSE",
+    "timestamp": "2025-11-29T10:03:00Z",
+    "data": {
+      "destination_pubkey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "lpp_data": "0167FFE70368210A",
+      "parsed_data": {
+        "temperature_0": -2.5,
+        "barometric_pressure_1": 1025.3
+      }
+    }
+  },
+  "trace_path": {
+    "type": "TRACE_DATA",
+    "timestamp": "2025-11-29T10:04:00Z",
+    "data": {
+      "initiator_tag": "aa",
+      "path_len": 3,
+      "path_hashes": ["aa", "bb", "cc"],
+      "snr_values": [8.5, 7.2, 6.1]
+    }
+  }
+}
