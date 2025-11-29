@@ -220,6 +220,53 @@ The endpoint automatically detects value types:
 - Other strings → queries string tags
 - `EXISTS` → finds any node with that tag key
 
+### Tag Import via CLI
+
+Import node tags from JSON files for bulk tag management:
+
+```bash
+# Import tags from JSON file
+meshcore_api tag node_tags.json
+
+# Preview changes without applying them
+meshcore_api tag node_tags.json --dry-run
+
+# Show detailed progress for each node
+meshcore_api tag node_tags.json --verbose
+
+# Continue processing even if some nodes fail
+meshcore_api tag node_tags.json --continue-on-error
+
+# Only validate the JSON file without applying changes
+meshcore_api tag node_tags.json --validate-only
+
+# Custom database location
+meshcore_api tag node_tags.json --db-path /data/meshcore.db
+```
+
+**JSON File Format:**
+```json
+{
+  "full_64_char_public_key": {
+    "friendly_name": {"value_type": "string", "value": "Gateway Node"},
+    "location": {
+      "value_type": "coordinate",
+      "value": {"latitude": 37.7749, "longitude": -122.4194}
+    },
+    "is_gateway": {"value_type": "boolean", "value": true},
+    "battery_count": {"value_type": "number", "value": 4}
+  }
+}
+```
+
+**Supported Value Types:**
+- `string`: Text values (friendly names, manufacturers, models, notes)
+- `number`: Numeric values (battery counts, firmware versions, hop counts)
+- `boolean`: True/false values (is_gateway, is_active, feature flags)
+- `coordinate`: GPS locations with latitude/longitude validation
+
+The import tool validates all data before applying changes and provides detailed feedback on success/failure for each node.
+
 ### Viewing Tags in Query Tool
 
 Tags are automatically displayed when viewing nodes:
