@@ -40,7 +40,6 @@ class CommandQueueManager:
         meshcore: MeshCoreInterface,
         max_queue_size: int = 100,
         queue_full_behavior: QueueFullBehavior = QueueFullBehavior.REJECT,
-        queue_timeout_seconds: float = 30.0,
         rate_limit_per_second: float = 2.0,
         rate_limit_burst: int = 5,
         rate_limit_enabled: bool = True,
@@ -56,7 +55,6 @@ class CommandQueueManager:
             meshcore: MeshCore interface for executing commands
             max_queue_size: Maximum number of queued commands
             queue_full_behavior: Behavior when queue is full
-            queue_timeout_seconds: Maximum time command waits in queue
             rate_limit_per_second: Commands per second (average)
             rate_limit_burst: Maximum burst size
             rate_limit_enabled: Enable rate limiting
@@ -68,7 +66,6 @@ class CommandQueueManager:
         self.meshcore = meshcore
         self.max_queue_size = max_queue_size
         self.queue_full_behavior = queue_full_behavior
-        self.queue_timeout_seconds = queue_timeout_seconds
 
         # Initialize queue
         self._queue: asyncio.Queue[QueuedCommand] = asyncio.Queue(maxsize=max_queue_size)
@@ -132,14 +129,17 @@ class CommandQueueManager:
         parameters: dict[str, Any],
     ) -> tuple[CommandResult, QueueInfo]:
         """
-        Enqueue a command for execution.
+        Enqueue a command for execution (non-blocking).
+
+        This method returns immediately after adding the command to the queue.
+        It does NOT wait for the command to be executed.
 
         Args:
             command_type: Type of command to execute
             parameters: Command parameters
 
         Returns:
-            Tuple of (result, queue_info)
+            Tuple of (result, queue_info) - result indicates queued, not executed
 
         Raises:
             QueueFullError: If queue is full and behavior is REJECT
@@ -156,99 +156,85 @@ class CommandQueueManager:
             )
             self._commands_debounced += 1
 
-            # Check if result is already cached
+            # Check if original command has completed
             cached_result = await self._debouncer.get_cached_result(command_hash)
-            if cached_result:
-                # Return cached result immediately
-                queue_info = QueueInfo(
-                    position=0,
-                    estimated_wait_seconds=0.0,
-                    queue_size=self._queue.qsize(),
-                    debounced=True,
-                    original_request_time=original_time,
-                )
-                return cached_result, queue_info
 
-            # Still pending, add waiter
-            waiter = await self._debouncer.add_waiter(command_hash)
             queue_info = QueueInfo(
-                position=1,  # Approximate
+                position=1,  # Approximate - it's somewhere in queue
                 estimated_wait_seconds=self._estimate_wait_time(),
                 queue_size=self._queue.qsize(),
                 debounced=True,
                 original_request_time=original_time,
             )
 
-            # Wait for result
-            try:
-                result = await asyncio.wait_for(waiter, timeout=self.queue_timeout_seconds)
-                return result, queue_info
-            except asyncio.TimeoutError:
-                logger.warning(
-                    f"Debounced command {command_type.value} timed out waiting for result"
+            if cached_result is not None:
+                # Original command has completed, return its result
+                logger.debug(
+                    f"Returning cached result for debounced command",
+                    extra={"command_hash": command_hash, "success": cached_result.success},
                 )
+                return cached_result, queue_info
+            else:
+                # Original command still pending
                 result = CommandResult(
-                    success=False,
-                    message="Command timed out waiting for result",
+                    success=True,
+                    message="Command already queued (pending execution)",
                     request_id="debounced",
-                    error="timeout",
                 )
                 return result, queue_info
 
         # Not a duplicate, enqueue normally
-        command = QueuedCommand(command_type=command_type, parameters=parameters)
+        command = QueuedCommand(
+            command_type=command_type,
+            parameters=parameters,
+            command_hash=command_hash,  # Store hash for marking completed later
+        )
 
         try:
-            # Try to add to queue
+            # Try to add to queue (non-blocking)
             self._queue.put_nowait(command)
             position = self._queue.qsize()
+
             queue_info = QueueInfo(
                 position=position,
-                estimated_wait_seconds=self._estimate_wait_time(),
+                estimated_wait_seconds=self._estimate_wait_time(position),
                 queue_size=position,
                 debounced=False,
             )
 
-            # Create a future to wait for result
-            result_future: asyncio.Future[CommandResult] = asyncio.Future()
+            result = CommandResult(
+                success=True,
+                message=f"Command queued successfully (position {position})",
+                request_id=command.request_id,
+            )
 
-            # Store the future with the command
-            # We'll use a dict to track pending commands
-            if not hasattr(self, "_pending_results"):
-                self._pending_results: dict[str, asyncio.Future] = {}
-            self._pending_results[command.request_id] = result_future
+            logger.debug(
+                f"Command {command_type.value} queued at position {position}",
+                extra={"request_id": command.request_id},
+            )
 
-            # Wait for result with timeout
-            try:
-                result = await asyncio.wait_for(result_future, timeout=self.queue_timeout_seconds)
-
-                # Mark as completed in debouncer if this was a new command
-                if command_hash:
-                    await self._debouncer.mark_completed(command_hash, result)
-
-                return result, queue_info
-            except asyncio.TimeoutError:
-                logger.warning(
-                    f"Command {command_type.value} timed out in queue",
-                    extra={"request_id": command.request_id},
-                )
-                # Clean up
-                self._pending_results.pop(command.request_id, None)
-                result = CommandResult(
-                    success=False,
-                    message="Command timed out in queue",
-                    request_id=command.request_id,
-                    error="timeout",
-                )
-                if command_hash:
-                    await self._debouncer.mark_completed(command_hash, result)
-                return result, queue_info
+            return result, queue_info
 
         except asyncio.QueueFull:
             # Queue is full, handle based on behavior
             if self.queue_full_behavior == QueueFullBehavior.REJECT:
                 logger.warning(f"Queue full, rejecting command {command_type.value}")
                 self._commands_dropped += 1
+
+                # Mark command as failed in debouncer before rejecting
+                if command_hash:
+                    failure_result = CommandResult(
+                        success=False,
+                        message="Command queue is full",
+                        request_id=command.request_id,
+                        error="queue_full",
+                    )
+                    await self._debouncer.mark_completed(command_hash, failure_result)
+                    logger.debug(
+                        f"Marked rejected command as failed in debouncer",
+                        extra={"command_hash": command_hash},
+                    )
+
                 raise QueueFullError("Command queue is full")
             else:  # DROP_OLDEST
                 logger.warning(f"Queue full, dropping oldest command for {command_type.value}")
@@ -256,72 +242,72 @@ class CommandQueueManager:
                     # Remove oldest command
                     dropped = self._queue.get_nowait()
                     self._commands_dropped += 1
-                    # Mark as failed if someone is waiting for it
-                    if hasattr(self, "_pending_results"):
-                        future = self._pending_results.pop(dropped.request_id, None)
-                        if future and not future.done():
-                            future.set_result(
-                                CommandResult(
-                                    success=False,
-                                    message="Command dropped due to queue overflow",
-                                    request_id=dropped.request_id,
-                                    error="dropped",
-                                )
-                            )
+                    logger.info(
+                        f"Dropped command {dropped.command_type.value} to make room",
+                        extra={"dropped_request_id": dropped.request_id},
+                    )
+
+                    # Mark dropped command as failed in debouncer
+                    if dropped.command_hash:
+                        failure_result = CommandResult(
+                            success=False,
+                            message="Command dropped from queue (queue full)",
+                            request_id=dropped.request_id,
+                            error="queue_full",
+                        )
+                        await self._debouncer.mark_completed(dropped.command_hash, failure_result)
+                        logger.debug(
+                            f"Marked dropped command as failed in debouncer",
+                            extra={"command_hash": dropped.command_hash},
+                        )
+
                     # Now try again
                     self._queue.put_nowait(command)
                     position = self._queue.qsize()
+
                     queue_info = QueueInfo(
                         position=position,
-                        estimated_wait_seconds=self._estimate_wait_time(),
+                        estimated_wait_seconds=self._estimate_wait_time(position),
                         queue_size=position,
                         debounced=False,
                     )
-                    # Wait for result (same as above)
-                    result_future = asyncio.Future()
-                    if not hasattr(self, "_pending_results"):
-                        self._pending_results = {}
-                    self._pending_results[command.request_id] = result_future
-                    try:
-                        result = await asyncio.wait_for(
-                            result_future, timeout=self.queue_timeout_seconds
-                        )
-                        if command_hash:
-                            await self._debouncer.mark_completed(command_hash, result)
-                        return result, queue_info
-                    except asyncio.TimeoutError:
-                        self._pending_results.pop(command.request_id, None)
-                        result = CommandResult(
-                            success=False,
-                            message="Command timed out in queue",
-                            request_id=command.request_id,
-                            error="timeout",
-                        )
-                        if command_hash:
-                            await self._debouncer.mark_completed(command_hash, result)
-                        return result, queue_info
+
+                    result = CommandResult(
+                        success=True,
+                        message=f"Command queued successfully (position {position}, oldest dropped)",
+                        request_id=command.request_id,
+                    )
+
+                    return result, queue_info
+
                 except asyncio.QueueEmpty:
                     # This shouldn't happen, but handle it
                     raise QueueFullError("Command queue is full")
 
-    def _estimate_wait_time(self) -> float:
+    def _estimate_wait_time(self, position: Optional[int] = None) -> float:
         """
-        Estimate wait time based on queue size and rate limit.
+        Estimate wait time based on queue position and rate limit.
+
+        Args:
+            position: Position in queue (if None, uses current queue size)
 
         Returns:
             Estimated wait time in seconds
         """
-        queue_size = self._queue.qsize()
-        if queue_size == 0:
+        if position is None:
+            position = self._queue.qsize()
+
+        if position == 0:
             return 0.0
 
         # Estimate based on rate limiter
         rate = self._rate_limiter.rate
-        if rate <= 0:
-            return 0.0
+        if rate <= 0 or not self._rate_limiter.enabled:
+            return 0.0  # No rate limiting
 
-        # Simple estimate: queue_size / rate
-        return queue_size / rate
+        # Calculate wait time: position / rate
+        # This is optimistic - assumes tokens are available
+        return position / rate
 
     async def _worker(self) -> None:
         """Background worker that processes the command queue."""
@@ -347,11 +333,21 @@ class CommandQueueManager:
                 result = await self._execute_command(command)
                 self._commands_processed += 1
 
-                # Notify waiter if exists
-                if hasattr(self, "_pending_results"):
-                    future = self._pending_results.pop(command.request_id, None)
-                    if future and not future.done():
-                        future.set_result(result)
+                # Mark command as completed in debouncer (allows cache cleanup)
+                if command.command_hash:
+                    await self._debouncer.mark_completed(command.command_hash, result)
+
+                # Log result
+                if result.success:
+                    logger.info(
+                        f"Command {command.command_type.value} executed successfully",
+                        extra={"request_id": command.request_id},
+                    )
+                else:
+                    logger.error(
+                        f"Command {command.command_type.value} failed: {result.error}",
+                        extra={"request_id": command.request_id},
+                    )
 
                 self._queue.task_done()
 

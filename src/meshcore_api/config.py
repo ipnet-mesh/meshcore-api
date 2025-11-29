@@ -57,12 +57,11 @@ class Config:
     # === Command Queue ===
     queue_max_size: int = 100
     queue_full_behavior: str = "reject"  # reject|drop_oldest
-    queue_timeout_seconds: float = 30.0
     rate_limit_enabled: bool = True
-    rate_limit_per_second: float = 0.0333 # Two commands per 60 seconds
-    rate_limit_burst: int = 2 # Allow short bursts of up to 2 commands
+    rate_limit_per_second: float = 0.02  # ~1 command per 50 seconds (LoRa duty cycle)
+    rate_limit_burst: int = 2  # Minimal burst for LoRa
     debounce_enabled: bool = True
-    debounce_window_seconds: float = 5.0
+    debounce_window_seconds: float = 60.0  # Increased to match LoRa transmission time
     debounce_cache_max_size: int = 1000
     debounce_commands: str = "send_message,send_channel_message,send_advert"
 
@@ -357,7 +356,6 @@ class Config:
                 'webhook_advertisement_jsonpath': cli_args.get('webhook_advertisement_jsonpath'),
                 'queue_max_size': cli_args.get('queue_max_size'),
                 'queue_full_behavior': cli_args.get('queue_full_behavior'),
-                'queue_timeout': cli_args.get('queue_timeout'),
                 'rate_limit_per_second': cli_args.get('rate_limit_per_second'),
                 'rate_limit_burst': cli_args.get('rate_limit_burst'),
                 'no_rate_limit': cli_args.get('no_rate_limit', False),
@@ -493,9 +491,6 @@ class Config:
         config.queue_full_behavior = get_value(
             args.queue_full_behavior, "MESHCORE_QUEUE_FULL_BEHAVIOR", config.queue_full_behavior
         )
-        config.queue_timeout_seconds = get_value(
-            args.queue_timeout, "MESHCORE_QUEUE_TIMEOUT_SECONDS", config.queue_timeout_seconds, float
-        )
         config.rate_limit_enabled = not args.no_rate_limit and get_value(
             None, "MESHCORE_RATE_LIMIT_ENABLED", config.rate_limit_enabled, bool
         )
@@ -587,7 +582,6 @@ class Config:
             "  Command Queue:",
             f"    Max Size: {self.queue_max_size}",
             f"    Full Behavior: {self.queue_full_behavior}",
-            f"    Timeout: {self.queue_timeout_seconds}s",
             f"    Rate Limiting: {'Enabled' if self.rate_limit_enabled else 'Disabled'}",
         ])
         if self.rate_limit_enabled:
