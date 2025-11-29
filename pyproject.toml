@@ -1,41 +1,45 @@
-[tool.poetry]
+[project]
 name = "meshcore-api"
 version = "1.0.0"
 description = "MeshCore companion application for event collection and REST API"
-authors = ["Your Name <you@example.com>"]
+authors = [{name = "Your Name", email = "you@example.com"}]
 readme = "README.md"
-packages = [{include = "meshcore_api", from = "src"}]
+requires-python = ">=3.11"
+dependencies = [
+    "meshcore>=2.2.1",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.31.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "pydantic>=2.9.0",
+    "prometheus-client>=0.21.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    "python-multipart>=0.0.12",
+    "click>=8.1.0",
+    "httpx>=0.27.0",
+    "jsonpath-ng>=1.6.0",
+]
 
-[tool.poetry.scripts]
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "black>=24.10.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+]
+
+[project.scripts]
 meshcore-api = "meshcore_api.cli:cli"
 meshcore_api = "meshcore_api.cli:cli"
 
-[tool.poetry.dependencies]
-python = "^3.11"
-meshcore = "^2.2.1"
-fastapi = "^0.115.0"
-uvicorn = {extras = ["standard"], version = "^0.31.0"}
-sqlalchemy = "^2.0.0"
-alembic = "^1.13.0"
-pydantic = "^2.9.0"
-prometheus-client = "^0.21.0"
-prometheus-fastapi-instrumentator = "^7.0.0"
-python-multipart = "^0.0.12"
-click = "^8.1.0"
-httpx = "^0.27.0"
-jsonpath-ng = "^1.6.0"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.0"
-pytest-asyncio = "^0.24.0"
-pytest-cov = "^6.0.0"
-black = "^24.10.0"
-ruff = "^0.7.0"
-mypy = "^1.13.0"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.black]
 line-length = 100
