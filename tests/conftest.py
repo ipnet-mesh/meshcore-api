@@ -47,21 +47,22 @@ def test_config(temp_db_path: str) -> Config:
         # Connection
         serial_port=None,
         use_mock=True,
-        mock_event_interval=0.1,  # Fast events for testing
+        mock_min_interval=0.1,  # Fast events for testing
+        mock_max_interval=0.2,
         mock_nodes=5,  # Fewer nodes for faster tests
         mock_scenario=None,
-        mock_scenario_loop=False,
+        mock_loop=False,
         # Database
         db_path=temp_db_path,
-        db_retention_days=30,
-        db_cleanup_interval_hours=24,
+        retention_days=30,
+        cleanup_interval_hours=24,
         # API
         api_host="127.0.0.1",
         api_port=8000,
         api_bearer_token=None,  # No auth by default
         # Logging
         log_level="WARNING",  # Quiet logs in tests
-        log_json=False,
+        log_format="text",
         # Webhooks
         webhook_message_direct=None,
         webhook_message_channel=None,
@@ -82,9 +83,9 @@ def test_config(temp_db_path: str) -> Config:
         debounce_enabled=False,
         debounce_window_seconds=1.0,
         debounce_cache_max_size=100,
-        debounce_commands=["send_message", "send_channel_message", "send_advert"],
+        debounce_commands="send_message,send_channel_message,send_advert",
         # Metrics
-        enable_metrics=False,
+        metrics_enabled=False,
     )
 
 
@@ -116,13 +117,14 @@ async def mock_meshcore() -> AsyncGenerator[MockMeshCore, None]:
     """Create a MockMeshCore instance for testing."""
     mock = MockMeshCore(
         num_nodes=5,
-        event_interval=0.1,
-        scenario=None,
+        min_interval=0.1,
+        max_interval=0.2,
+        scenario_name=None,
         loop_scenario=False,
     )
-    await mock.start()
+    await mock.connect()
     yield mock
-    await mock.stop()
+    await mock.disconnect()
 
 
 @pytest_asyncio.fixture
