@@ -1,0 +1,24 @@
+{
+  "invalid_key_too_short": {
+    "friendly_name": {
+      "value_type": "string",
+      "value": "This key is too short"
+    }
+  },
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+    "invalid_coordinate": {
+      "value_type": "coordinate",
+      "value": {
+        "latitude": 999.0,
+        "longitude": -122.4194
+      }
+    },
+    "missing_value_type": {
+      "value": "Missing value_type field"
+    },
+    "invalid_boolean": {
+      "value_type": "boolean",
+      "value": "not-a-boolean"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+    "friendly_name": {
+      "value_type": "string",
+      "value": "Gateway Node"
+    },
+    "location": {
+      "value_type": "coordinate",
+      "value": {
+        "latitude": 37.7749,
+        "longitude": -122.4194
+      }
+    },
+    "is_gateway": {
+      "value_type": "boolean",
+      "value": true
+    },
+    "battery_count": {
+      "value_type": "number",
+      "value": 4
+    },
+    "firmware_version": {
+      "value_type": "string",
+      "value": "2.2.1"
+    }
+  },
+  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {
+    "friendly_name": {
+      "value_type": "string",
+      "value": "Repeater Node"
+    },
+    "location": {
+      "value_type": "coordinate",
+      "value": {
+        "latitude": 37.8044,
+        "longitude": -122.2712
+      }
+    },
+    "is_repeater": {
+      "value_type": "boolean",
+      "value": true
+    },
+    "antenna_gain": {
+      "value_type": "number",
+      "value": 5.5
+    }
+  },
+  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc": {
+    "friendly_name": {
+      "value_type": "string",
+      "value": "Sensor Node"
+    },
+    "manufacturer": {
+      "value_type": "string",
+      "value": "Acme Corp"
+    },
+    "model": {
+      "value_type": "string",
+      "value": "MC-1000"
+    },
+    "has_gps": {
+      "value_type": "boolean",
+      "value": true
+    }
+  }
+}
