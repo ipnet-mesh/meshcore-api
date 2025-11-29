@@ -20,6 +20,7 @@ from meshcore_api.database.engine import DatabaseEngine
 from meshcore_api.database.models import Base
 from meshcore_api.meshcore.mock import MockMeshCore
 from meshcore_api.queue.manager import CommandQueueManager
+from meshcore_api.queue.models import QueueFullBehavior
 from meshcore_api.subscriber.event_handler import EventHandler
 from meshcore_api.webhook.handler import WebhookHandler
 
@@ -74,7 +75,7 @@ def test_config(temp_db_path: str) -> Config:
         webhook_advertisement_jsonpath="$",
         # Queue
         queue_max_size=100,
-        queue_full_behavior="reject",
+        queue_full_behavior=QueueFullBehavior.REJECT,
         # Rate limiting (disabled for fast tests)
         rate_limit_enabled=False,
         rate_limit_per_second=10.0,
@@ -100,7 +101,7 @@ def test_config_with_auth(test_config: Config) -> Config:
 def db_engine(test_config: Config) -> Generator[DatabaseEngine, None, None]:
     """Create a database engine for testing."""
     engine = DatabaseEngine(test_config.db_path)
-    engine.init_db()
+    engine.initialize()
     yield engine
     engine.close()
 
@@ -135,7 +136,15 @@ async def queue_manager(
     """Create a CommandQueueManager for testing."""
     manager = CommandQueueManager(
         meshcore=mock_meshcore,
-        config=test_config,
+        max_queue_size=test_config.queue_max_size,
+        queue_full_behavior=test_config.queue_full_behavior,
+        rate_limit_per_second=test_config.rate_limit_per_second,
+        rate_limit_burst=test_config.rate_limit_burst,
+        rate_limit_enabled=test_config.rate_limit_enabled,
+        debounce_window_seconds=test_config.debounce_window_seconds,
+        debounce_cache_max_size=test_config.debounce_cache_max_size,
+        debounce_enabled=test_config.debounce_enabled,
+        debounce_commands=set(test_config.debounce_commands.split(",")),
     )
     await manager.start()
     yield manager
@@ -169,36 +178,16 @@ async def event_handler(
 
 
 @pytest.fixture(scope="function")
-def test_app(
-    test_config: Config,
-    db_engine: DatabaseEngine,
-    mock_meshcore: MockMeshCore,
-    queue_manager: CommandQueueManager,
-) -> TestClient:
-    """Create a FastAPI test client."""
-    app = create_app(
-        config=test_config,
-        db_engine=db_engine,
-        meshcore=mock_meshcore,
-        queue_manager=queue_manager,
-    )
+def test_app() -> TestClient:
+    """Create a simple FastAPI test client without dependencies."""
+    app = create_app()
     return TestClient(app)
 
 
 @pytest.fixture(scope="function")
-def test_app_with_auth(
-    test_config_with_auth: Config,
-    db_engine: DatabaseEngine,
-    mock_meshcore: MockMeshCore,
-    queue_manager: CommandQueueManager,
-) -> TestClient:
-    """Create a FastAPI test client with authentication."""
-    app = create_app(
-        config=test_config_with_auth,
-        db_engine=db_engine,
-        meshcore=mock_meshcore,
-        queue_manager=queue_manager,
-    )
+def test_app_with_auth() -> TestClient:
+    """Create a simple FastAPI test client with authentication."""
+    app = create_app(bearer_token="test-token-12345")
     return TestClient(app)
 
 
