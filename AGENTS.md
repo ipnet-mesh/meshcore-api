@@ -290,7 +290,6 @@ The application includes a command queue system with rate limiting and debouncin
 # Queue Configuration
 export MESHCORE_QUEUE_MAX_SIZE=100              # Max queued commands (default: 100)
 export MESHCORE_QUEUE_FULL_BEHAVIOR="reject"    # "reject" or "drop_oldest" (default: reject)
-export MESHCORE_QUEUE_TIMEOUT_SECONDS=30.0      # Max time command waits in queue (default: 30s)
 
 # Rate Limiting
 export MESHCORE_RATE_LIMIT_ENABLED=true         # Enable rate limiting (default: true)
@@ -310,7 +309,6 @@ meshcore_api server \
   --use-mock \
   --queue-max-size 100 \
   --queue-full-behavior reject \
-  --queue-timeout 30.0 \
   --rate-limit-per-second 0.02 \
   --rate-limit-burst 2 \
   --debounce-window 60.0 \
@@ -426,20 +424,6 @@ If the queue is full and behavior is set to `reject`:
 ```
 
 **Solution:** Wait and retry, or increase `queue_max_size`
-
-#### Command Timeout
-
-If a command sits in queue longer than `queue_timeout_seconds`:
-
-```json
-{
-  "success": false,
-  "message": "Command timed out in queue",
-  "error": "timeout"
-}
-```
-
-**Solution:** Increase `queue_timeout_seconds` or `rate_limit_per_second`
 
 ### Monitoring
 

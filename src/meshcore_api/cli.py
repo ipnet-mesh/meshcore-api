@@ -133,11 +133,6 @@ def cli():
     help="Behavior when queue is full (default: reject)",
 )
 @click.option(
-    "--queue-timeout",
-    type=float,
-    help="Maximum time a command waits in queue in seconds (default: 30.0)",
-)
-@click.option(
     "--rate-limit-per-second",
     type=float,
     help="Commands per second (average rate) (default: 0.02 = 1 per 50 seconds for LoRa duty cycle)",

@@ -40,7 +40,6 @@ class CommandQueueManager:
         meshcore: MeshCoreInterface,
         max_queue_size: int = 100,
         queue_full_behavior: QueueFullBehavior = QueueFullBehavior.REJECT,
-        queue_timeout_seconds: float = 30.0,
         rate_limit_per_second: float = 2.0,
         rate_limit_burst: int = 5,
         rate_limit_enabled: bool = True,
@@ -56,7 +55,6 @@ class CommandQueueManager:
             meshcore: MeshCore interface for executing commands
             max_queue_size: Maximum number of queued commands
             queue_full_behavior: Behavior when queue is full
-            queue_timeout_seconds: Maximum time command waits in queue
             rate_limit_per_second: Commands per second (average)
             rate_limit_burst: Maximum burst size
             rate_limit_enabled: Enable rate limiting
@@ -68,7 +66,6 @@ class CommandQueueManager:
         self.meshcore = meshcore
         self.max_queue_size = max_queue_size
         self.queue_full_behavior = queue_full_behavior
-        self.queue_timeout_seconds = queue_timeout_seconds
 
         # Initialize queue
         self._queue: asyncio.Queue[QueuedCommand] = asyncio.Queue(maxsize=max_queue_size)

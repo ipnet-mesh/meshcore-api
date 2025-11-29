@@ -133,7 +133,6 @@ class Application:
             meshcore=self.meshcore,
             max_queue_size=self.config.queue_max_size,
             queue_full_behavior=QueueFullBehavior(self.config.queue_full_behavior),
-            queue_timeout_seconds=self.config.queue_timeout_seconds,
             rate_limit_per_second=self.config.rate_limit_per_second,
             rate_limit_burst=self.config.rate_limit_burst,
             rate_limit_enabled=self.config.rate_limit_enabled,
