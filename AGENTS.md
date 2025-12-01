@@ -19,6 +19,7 @@ The application provides a Click-based CLI with the following commands:
 - Start server: `meshcore_api server [OPTIONS]` or `python -m meshcore_api server`
 - Query database: `meshcore_api query [OPTIONS]` or `python -m meshcore_api query`
 - Import tags: `meshcore_api tag JSON_FILE [OPTIONS]` or `python -m meshcore_api tag JSON_FILE`
+- Start MCP server: `meshcore_api mcp [OPTIONS]` or `python -m meshcore_api mcp`
 - Show help: `meshcore_api --help`
 
 ### Server Command
@@ -92,6 +93,46 @@ Supported value types:
 - `number`: Numeric values (int or float)
 - `boolean`: True/false values
 - `coordinate`: Geographic coordinates with latitude and longitude
+
+### MCP Command
+
+Start the MeshCore MCP (Model Context Protocol) server:
+```bash
+meshcore_api mcp --api-url http://localhost:8080
+meshcore_api mcp --api-url http://localhost:8080 --api-token "secret"
+meshcore_api mcp --api-url http://localhost:8080 --port 9000
+```
+
+The MCP server provides AI/LLM integration tools for interacting with the MeshCore API. It runs as an HTTP server (default port 8081) or in stdio mode.
+
+**Important Architecture Note:** The MCP server is a standalone HTTP client that communicates **exclusively with the MeshCore REST API over HTTP**. It does NOT:
+- Connect directly to any database
+- Communicate with the MeshCore companion device/hardware
+- Require access to the SQLite database file
+- Need serial/BLE connectivity
+
+This design allows the MCP server to run on a completely separate machine from the MeshCore API server, as long as it can reach the API endpoint over the network.
+
+Common options:
+- `--host`: MCP server host (default: 0.0.0.0)
+- `--port`: MCP server port (default: 8081)
+- `--api-url`: MeshCore API URL (required, e.g., http://localhost:8080)
+- `--api-token`: Bearer token for API authentication (if API requires auth)
+- `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
+- `--stdio`: Run in stdio mode instead of HTTP server
+
+Environment variables:
+- `MCP_HOST`: MCP server host
+- `MCP_PORT`: MCP server port
+- `MESHCORE_API_URL`: MeshCore API URL
+- `MESHCORE_API_TOKEN`: Bearer token for API authentication
+
+**Available MCP Tools:**
+- `meshcore_get_messages` - Query messages from the mesh network
+- `meshcore_send_direct_message` - Send a direct message to a specific node
+- `meshcore_send_channel_message` - Send a broadcast message to all nodes
+- `meshcore_get_advertisements` - Query advertisements from the mesh network
+- `meshcore_send_advertisement` - Send an advertisement to announce this device
 
 ## Database Schema
 

@@ -31,7 +31,7 @@ class TestConfig:
 
         # API defaults
         assert config.api_host == "0.0.0.0"
-        assert config.api_port == 8000
+        assert config.api_port == 8080
         assert config.api_title == "MeshCore API"
         assert config.api_version == "1.0.0"
         assert config.api_bearer_token is None
