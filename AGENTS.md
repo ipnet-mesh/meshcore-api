@@ -9,6 +9,7 @@
 * You MUST install all project dependencies using `pip install -e ".[dev]"` command`
 * You MUST install `pre-commit` for quality checks
 * Before commiting:
+  - Run tests with `pytest` to ensure recent changes haven't broken anything
   - Run `pre-commit run --all-files` to perform all quality checks
 
 ## Useful Commands:

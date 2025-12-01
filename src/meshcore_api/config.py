@@ -29,7 +29,7 @@ class Config:
 
     # === API ===
     api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    api_port: int = 8080
     api_title: str = "MeshCore API"
     api_version: str = "1.0.0"
     api_bearer_token: Optional[str] = None

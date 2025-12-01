@@ -32,12 +32,3 @@ repos:
   #   hooks:
   #     - id: mypy
   #       additional_dependencies: [pydantic, click, paho-mqtt]
-
-  - repo: local
-    hooks:
-      - id: pytest
-        name: pytest
-        entry: pytest
-        language: system
-        pass_filenames: false
-        always_run: true
