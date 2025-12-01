@@ -11,6 +11,7 @@ services:
       MESHCORE_RETENTION_DAYS: "30"
       MESHCORE_SERIAL_PORT: "/dev/ttyUSB0"  # uncomment and set when using real hardware
       ENABLE_METRICS: "true"
+      # MESHCORE_API_BEARER_TOKEN: "your-secret-token"  # uncomment to enable auth
       # WEBHOOK_MESSAGE_DIRECT: http://does-not-exist:5000/webhook
     ports:
       - "8080:8080"
@@ -18,6 +19,20 @@ services:
       - data:/data
     devices:
       - "/dev/ttyUSB0:/dev/ttyUSB0"    # needed only when using real hardware
+    restart: unless-stopped
+
+  meshcore-mcp:
+    image: ghcr.io/ipnet-mesh/meshcore-api:latest
+    command: ["mcp"]
+    environment:
+      MESHCORE_API_URL: "http://meshcore-api:8080"
+      # MESHCORE_API_TOKEN: "${MESHCORE_API_BEARER_TOKEN:-}"  # uncomment if API auth is enabled
+      MCP_PORT: "8081"
+      MESHCORE_LOG_LEVEL: "INFO"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - meshcore-api
     restart: unless-stopped
 
 volumes:

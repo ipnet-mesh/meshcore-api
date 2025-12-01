@@ -439,5 +439,93 @@ def tag(json_file, db_path, dry_run, verbose, continue_on_error, validate_only):
         sys.exit(1)
 
 
+@cli.command()
+@click.option(
+    "--host",
+    type=str,
+    help="MCP server host (default: 0.0.0.0)",
+)
+@click.option(
+    "--port",
+    type=int,
+    help="MCP server port (default: 8081)",
+)
+@click.option(
+    "--api-url",
+    type=str,
+    help="MeshCore API URL (e.g., http://localhost:8080)",
+)
+@click.option(
+    "--api-token",
+    type=str,
+    help="MeshCore API bearer token for authentication",
+)
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
+    help="Logging level (default: INFO)",
+)
+@click.option(
+    "--stdio",
+    is_flag=True,
+    help="Run in stdio mode instead of HTTP server",
+)
+def mcp(host, port, api_url, api_token, log_level, stdio):
+    """Start the MeshCore MCP server.
+
+    The MCP server provides Model Context Protocol tools for interacting
+    with the MeshCore API. It can run as an HTTP server (default) or in
+    stdio mode for direct integration.
+
+    Examples:
+
+    \b
+      # Start MCP server pointing to local API
+      meshcore_api mcp --api-url http://localhost:8080
+
+      # With authentication
+      meshcore_api mcp --api-url http://localhost:8080 --api-token "secret"
+
+      # Custom port
+      meshcore_api mcp --api-url http://localhost:8080 --port 9000
+
+      # Debug logging
+      meshcore_api mcp --api-url http://localhost:8080 --log-level DEBUG
+
+      # Stdio mode for direct MCP integration
+      meshcore_api mcp --api-url http://localhost:8080 --stdio
+    """
+    from .mcp.config import MCPConfig
+    from .mcp.server import run_server, run_stdio
+
+    # Build CLI args dict
+    cli_args = {}
+    if host is not None:
+        cli_args["host"] = host
+    if port is not None:
+        cli_args["port"] = port
+    if api_url is not None:
+        cli_args["api_url"] = api_url
+    if api_token is not None:
+        cli_args["api_token"] = api_token
+    if log_level is not None:
+        cli_args["log_level"] = log_level
+
+    # Load configuration
+    config = MCPConfig.from_args_and_env(cli_args)
+
+    # Setup logging
+    setup_logging(level=config.log_level)
+
+    # Log configuration
+    logger.info(config.display())
+
+    # Run server
+    if stdio:
+        run_stdio(config)
+    else:
+        run_server(config)
+
+
 if __name__ == "__main__":
     cli()
