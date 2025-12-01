@@ -211,6 +211,10 @@ Data is automatically cleaned up based on the configured retention period (defau
                 "description": "Network trace path results",
             },
             {
+                "name": "signal-strength",
+                "description": "Signal strength measurements between nodes",
+            },
+            {
                 "name": "commands",
                 "description": "Send commands to the mesh network",
             },
@@ -309,6 +313,7 @@ Data is automatically cleaned up based on the configured retention period (defau
         health,
         messages,
         nodes,
+        signal_strength,
         tags,
         telemetry,
         trace_paths,
@@ -321,6 +326,7 @@ Data is automatically cleaned up based on the configured retention period (defau
     app.include_router(advertisements.router, prefix="/api/v1", tags=["advertisements"])
     app.include_router(telemetry.router, prefix="/api/v1", tags=["telemetry"])
     app.include_router(trace_paths.router, prefix="/api/v1", tags=["trace-paths"])
+    app.include_router(signal_strength.router, prefix="/api/v1", tags=["signal-strength"])
     app.include_router(commands.router, prefix="/api/v1", tags=["commands"])
 
     # =========================================================================

@@ -227,6 +227,57 @@ class TelemetryFilters(BaseModel):
 
 
 # ============================================================================
+# Signal Strength Schemas
+# ============================================================================
+
+
+class SignalStrengthResponse(BaseModel):
+    """Response model for a signal strength measurement."""
+
+    id: int
+    source_public_key: str
+    destination_public_key: str
+    snr: float
+    trace_path_id: Optional[int] = None
+    recorded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SignalStrengthListResponse(BaseModel):
+    """Response model for signal strength list."""
+
+    signal_strengths: List[SignalStrengthResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class SignalStrengthFilters(BaseModel):
+    """Query filters for signal strength measurements."""
+
+    source_public_key: Optional[str] = Field(
+        None,
+        min_length=64,
+        max_length=64,
+        description="Filter by source node public key (full 64 hex characters)",
+    )
+    destination_public_key: Optional[str] = Field(
+        None,
+        min_length=64,
+        max_length=64,
+        description="Filter by destination node public key (full 64 hex characters)",
+    )
+    start_date: Optional[datetime] = Field(
+        None, description="Filter signal strength records after this date"
+    )
+    end_date: Optional[datetime] = Field(
+        None, description="Filter signal strength records before this date"
+    )
+
+
+# ============================================================================
 # Command Request Schemas
 # ============================================================================
 
