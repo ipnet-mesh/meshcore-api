@@ -1,8 +1,8 @@
 {
   "servers": {
-    "MeshCoreDocker": {
+    "MeshCoreIPNet": {
       "type": "http",
-      "url": "http://localhost:8081/mcp/"
+      "url": "https://mcp.ipnt.uk/mcp/"
     }
   }
 }
