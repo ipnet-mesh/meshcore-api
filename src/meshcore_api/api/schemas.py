@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 # ============================================================================
 # Common/Shared Schemas
@@ -41,8 +41,7 @@ class NodeResponse(BaseModel):
     created_at: datetime
     tags: dict = Field(default_factory=dict, description="Node tags as key-value pairs")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NodeListResponse(BaseModel):
@@ -75,8 +74,7 @@ class MessageResponse(BaseModel):
     sender_timestamp: Optional[datetime] = None
     received_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MessageListResponse(BaseModel):
@@ -126,8 +124,7 @@ class AdvertisementResponse(BaseModel):
     flags: Optional[int] = None
     received_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdvertisementListResponse(BaseModel):
@@ -170,8 +167,7 @@ class TracePathResponse(BaseModel):
     hop_count: Optional[int] = None
     completed_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TracePathListResponse(BaseModel):
@@ -203,8 +199,7 @@ class TelemetryResponse(BaseModel):
     parsed_data: Optional[str] = None
     received_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TelemetryListResponse(BaseModel):
@@ -241,8 +236,7 @@ class SignalStrengthResponse(BaseModel):
     trace_path_id: Optional[int] = None
     recorded_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SignalStrengthListResponse(BaseModel):
