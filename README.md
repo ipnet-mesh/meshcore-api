@@ -9,6 +9,7 @@ MeshCore companion application for event collection, persistence, and REST API a
 - Custom node metadata tags with typed values (strings, numbers, booleans, coordinates)
 - **Webhooks** for real-time event notifications to external URLs
 - REST API for querying collected data and sending commands
+- **MCP Server** for AI/LLM integration via Model Context Protocol
 - Mock MeshCore implementation for development without hardware
 - Prometheus metrics for monitoring
 - OpenAPI/Swagger documentation
@@ -441,6 +442,134 @@ curl http://localhost:9000/status
 ```
 
 The test server displays received webhooks in real-time and provides a status endpoint for monitoring.
+
+## MCP Server (AI/LLM Integration)
+
+The MeshCore MCP (Model Context Protocol) server enables AI assistants and LLMs to interact with your mesh network through a standardized interface.
+
+### Architecture
+
+**Important:** The MCP server is a standalone HTTP client that communicates **exclusively with the MeshCore REST API over HTTP**. It does NOT:
+
+- Connect directly to any database
+- Communicate with the MeshCore companion device/hardware
+- Require access to the SQLite database file
+- Need serial/BLE connectivity
+
+This design allows the MCP server to run on a completely separate machine from the MeshCore API server, as long as it can reach the API endpoint over the network.
+
+```
+┌─────────────┐      HTTP       ┌──────────────────┐      Serial/BLE     ┌──────────────┐
+│  AI/LLM     │ ◄────────────► │  MeshCore API    │ ◄────────────────► │   MeshCore   │
+│  (Claude,   │                 │  Server          │                     │   Device     │
+│   etc.)     │                 │  (port 8080)     │                     │              │
+└─────────────┘                 │  + SQLite DB     │                     └──────────────┘
+       │                        └──────────────────┘
+       │ MCP                            ▲
+       ▼                                │ HTTP
+┌─────────────┐                         │
+│  MCP Server │ ────────────────────────┘
+│  (port 8081)│
+└─────────────┘
+```
+
+### Quick Start
+
+```bash
+# Start the MeshCore API server first
+meshcore_api server --use-mock --api-port 8080
+
+# In another terminal, start the MCP server
+meshcore_api mcp --api-url http://localhost:8080
+
+# With authentication (if API requires it)
+meshcore_api mcp --api-url http://localhost:8080 --api-token "your-token"
+
+# Run in stdio mode (for direct LLM integration)
+meshcore_api mcp --api-url http://localhost:8080 --stdio
+```
+
+### Configuration
+
+**CLI Arguments:**
+```bash
+meshcore_api mcp \
+  --host 0.0.0.0 \
+  --port 8081 \
+  --api-url http://localhost:8080 \
+  --api-token "optional-bearer-token" \
+  --log-level INFO
+```
+
+**Environment Variables:**
+```bash
+export MCP_HOST=0.0.0.0
+export MCP_PORT=8081
+export MESHCORE_API_URL=http://localhost:8080
+export MESHCORE_API_TOKEN=your-bearer-token
+meshcore_api mcp
+```
+
+### Available MCP Tools
+
+The MCP server exposes these tools to AI assistants:
+
+| Tool | Description |
+|------|-------------|
+| `meshcore_get_messages` | Query messages from the mesh network with filtering by sender, channel, type, and date range |
+| `meshcore_send_direct_message` | Send a direct message to a specific node (requires 64-char public key) |
+| `meshcore_send_channel_message` | Send a broadcast message to all nodes on the channel |
+| `meshcore_get_advertisements` | Query node advertisements with filtering by node, type, and date range |
+| `meshcore_send_advertisement` | Send an advertisement to announce this device on the network |
+
+### Example Tool Usage
+
+When an AI assistant uses the MCP tools:
+
+```python
+# Query recent messages
+meshcore_get_messages(limit=10, message_type="channel")
+
+# Send a direct message to a node
+meshcore_send_direct_message(
+    destination="abc123...64chars...",
+    text="Hello from AI!",
+    text_type="plain"
+)
+
+# Send a channel broadcast
+meshcore_send_channel_message(text="Hello mesh network!", flood=False)
+
+# Query advertisements from a specific node
+meshcore_get_advertisements(node_public_key="abc123...64chars...", limit=5)
+```
+
+### Running Remotely
+
+Since the MCP server only needs HTTP access to the API, you can run it anywhere:
+
+```bash
+# On a remote machine (API server at 192.168.1.100)
+meshcore_api mcp --api-url http://192.168.1.100:8080
+
+# With a cloud-hosted API
+meshcore_api mcp --api-url https://meshcore.example.com --api-token "secret"
+```
+
+### VSCode Integration
+
+Add to your VSCode MCP settings to enable Claude integration:
+
+```json
+{
+  "mcpServers": {
+    "meshcore": {
+      "command": "meshcore_api",
+      "args": ["mcp", "--api-url", "http://localhost:8080", "--stdio"]
+    }
+  }
+}
+```
 
 ## API Documentation
 

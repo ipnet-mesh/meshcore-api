@@ -105,6 +105,14 @@ meshcore_api mcp --api-url http://localhost:8080 --port 9000
 
 The MCP server provides AI/LLM integration tools for interacting with the MeshCore API. It runs as an HTTP server (default port 8081) or in stdio mode.
 
+**Important Architecture Note:** The MCP server is a standalone HTTP client that communicates **exclusively with the MeshCore REST API over HTTP**. It does NOT:
+- Connect directly to any database
+- Communicate with the MeshCore companion device/hardware
+- Require access to the SQLite database file
+- Need serial/BLE connectivity
+
+This design allows the MCP server to run on a completely separate machine from the MeshCore API server, as long as it can reach the API endpoint over the network.
+
 Common options:
 - `--host`: MCP server host (default: 0.0.0.0)
 - `--port`: MCP server port (default: 8081)
