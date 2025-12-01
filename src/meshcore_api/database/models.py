@@ -140,6 +140,24 @@ class Telemetry(Base):
     received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
 
 
+class SignalStrength(Base):
+    """Represents signal strength measurement between two nodes."""
+
+    __tablename__ = "signal_strength"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_public_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    destination_public_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    snr: Mapped[float] = mapped_column(Float, nullable=False)
+    trace_path_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)  # Reference to trace
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("idx_signal_strength_source_dest", "source_public_key", "destination_public_key"),
+        Index("idx_signal_strength_recorded", "recorded_at"),
+    )
+
+
 class EventLog(Base):
     """Raw event log for all MeshCore events."""
 

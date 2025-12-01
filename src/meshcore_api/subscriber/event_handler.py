@@ -14,6 +14,7 @@ from ..database.models import (
     EventLog,
     Message,
     Node,
+    SignalStrength,
     Telemetry,
     TracePath,
 )
@@ -388,6 +389,50 @@ class EventHandler:
             )
             session.add(message)
 
+    def _resolve_prefix_to_full_key(self, session, prefix: str) -> Optional[str]:
+        """
+        Resolve a 2-character public key prefix to a full 64-character public key.
+
+        Uses existing database APIs to find matching nodes. If multiple nodes match,
+        returns the one with the most recent last_seen timestamp.
+
+        Args:
+            session: Database session
+            prefix: 2-character public key prefix (lowercase)
+
+        Returns:
+            Full 64-character public key if found, None otherwise
+        """
+        if not prefix or len(prefix) < 2:
+            return None
+
+        # Find all nodes matching this prefix
+        nodes = Node.find_by_prefix(session, prefix)
+
+        if not nodes:
+            logger.debug(f"No nodes found for prefix '{prefix}'")
+            return None
+
+        if len(nodes) == 1:
+            return nodes[0].public_key
+
+        # Multiple matches - use the one with the most recent last_seen
+        nodes_with_last_seen = [n for n in nodes if n.last_seen is not None]
+        if nodes_with_last_seen:
+            most_recent = max(nodes_with_last_seen, key=lambda n: n.last_seen)
+            logger.debug(
+                f"Multiple nodes ({len(nodes)}) match prefix '{prefix}', "
+                f"using most recent: {most_recent.public_key[:8]}..."
+            )
+            return most_recent.public_key
+
+        # No nodes have last_seen set, use the first one (by creation order)
+        logger.debug(
+            f"Multiple nodes ({len(nodes)}) match prefix '{prefix}' with no last_seen, "
+            f"using first: {nodes[0].public_key[:8]}..."
+        )
+        return nodes[0].public_key
+
     async def _handle_trace_data(self, event: Event) -> None:
         """Handle TRACE_DATA event."""
         payload = event.payload
@@ -434,6 +479,72 @@ class EventHandler:
                 hop_count=hop_count,
             )
             session.add(trace)
+            session.flush()  # Get the trace ID
+
+            # Create SignalStrength records for consecutive node pairs
+            if path_hashes and snr_values and len(path_hashes) >= 2:
+                self._create_signal_strength_records(session, trace.id, path_hashes, snr_values)
+
+    def _create_signal_strength_records(
+        self,
+        session,
+        trace_path_id: int,
+        path_hashes: List[str],
+        snr_values: List[float],
+    ) -> None:
+        """
+        Create SignalStrength records for consecutive node pairs in a trace path.
+
+        The SNR at index i represents the signal received by node path_hashes[i]
+        from the previous node. For i > 0, we can create records where:
+        - source = path_hashes[i-1]
+        - destination = path_hashes[i]
+        - snr = snr_values[i]
+
+        Args:
+            session: Database session
+            trace_path_id: ID of the trace path for reference
+            path_hashes: List of 2-char node prefixes in path order
+            snr_values: List of SNR values corresponding to each hop
+        """
+        created_count = 0
+
+        # Create records for consecutive pairs (starting from index 1)
+        # snr_values[i] is the signal from path_hashes[i-1] to path_hashes[i]
+        for i in range(1, min(len(path_hashes), len(snr_values))):
+            source_prefix = path_hashes[i - 1]
+            dest_prefix = path_hashes[i]
+            snr = snr_values[i]
+
+            if source_prefix is None or dest_prefix is None or snr is None:
+                logger.debug(f"Skipping hop {i}: missing data")
+                continue
+
+            # Resolve prefixes to full public keys
+            source_key = self._resolve_prefix_to_full_key(session, source_prefix)
+            dest_key = self._resolve_prefix_to_full_key(session, dest_prefix)
+
+            if source_key is None:
+                logger.debug(f"Could not resolve source prefix '{source_prefix}' for hop {i}")
+                continue
+            if dest_key is None:
+                logger.debug(f"Could not resolve dest prefix '{dest_prefix}' for hop {i}")
+                continue
+
+            # Create SignalStrength record
+            signal_strength = SignalStrength(
+                source_public_key=source_key,
+                destination_public_key=dest_key,
+                snr=float(snr),
+                trace_path_id=trace_path_id,
+            )
+            session.add(signal_strength)
+            created_count += 1
+
+        if created_count > 0:
+            logger.debug(
+                f"Created {created_count} SignalStrength records for trace path {trace_path_id}"
+            )
 
     async def _handle_telemetry(self, event: Event) -> None:
         """Handle TELEMETRY_RESPONSE event."""
