@@ -43,9 +43,7 @@ async def query_signal_strength(
     end_date: Optional[datetime] = Query(
         None, description="Filter signal strength records before this date (ISO 8601)"
     ),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of records to return"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     db: Session = Depends(get_db),
 ) -> SignalStrengthListResponse:
