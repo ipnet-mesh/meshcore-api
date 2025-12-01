@@ -219,9 +219,7 @@ class TestSignalStrengthModel:
 
         with db_engine.session_scope() as session:
             records = (
-                session.query(SignalStrength)
-                .filter(SignalStrength.trace_path_id == 100)
-                .all()
+                session.query(SignalStrength).filter(SignalStrength.trace_path_id == 100).all()
             )
             assert len(records) == 2
 
