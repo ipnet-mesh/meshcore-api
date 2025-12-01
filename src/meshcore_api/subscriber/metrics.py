@@ -1,6 +1,7 @@
 """Prometheus metrics collector."""
 
 import logging
+
 from prometheus_client import Counter, Gauge, Histogram
 
 logger = logging.getLogger(__name__)
@@ -14,150 +15,105 @@ class MetricsCollector:
 
         # Event counters
         self.events_total = Counter(
-            'meshcore_events_total',
-            'Total MeshCore events received',
-            ['event_type']
+            "meshcore_events_total", "Total MeshCore events received", ["event_type"]
         )
 
         self.messages_total = Counter(
-            'meshcore_messages_total',
-            'Total messages processed',
-            ['direction', 'message_type']
+            "meshcore_messages_total", "Total messages processed", ["direction", "message_type"]
         )
 
         self.advertisements_total = Counter(
-            'meshcore_advertisements_total',
-            'Total advertisements received',
-            ['adv_type']
+            "meshcore_advertisements_total", "Total advertisements received", ["adv_type"]
         )
 
         # Latency metrics
         self.message_roundtrip_seconds = Histogram(
-            'meshcore_message_roundtrip_seconds',
-            'Message round-trip time in seconds',
-            buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0]
+            "meshcore_message_roundtrip_seconds",
+            "Message round-trip time in seconds",
+            buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],
         )
 
         # Node connectivity
-        self.nodes_total = Gauge(
-            'meshcore_nodes_total',
-            'Total unique nodes in database'
-        )
+        self.nodes_total = Gauge("meshcore_nodes_total", "Total unique nodes in database")
 
-        self.nodes_active = Gauge(
-            'meshcore_nodes_active',
-            'Nodes seen in last hour',
-            ['node_type']
-        )
+        self.nodes_active = Gauge("meshcore_nodes_active", "Nodes seen in last hour", ["node_type"])
 
         self.path_hop_count = Histogram(
-            'meshcore_path_hop_count',
-            'Distribution of path hop counts',
-            buckets=[1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20]
+            "meshcore_path_hop_count",
+            "Distribution of path hop counts",
+            buckets=[1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20],
         )
 
         # Signal quality
         self.snr_db = Histogram(
-            'meshcore_snr_db',
-            'Signal-to-noise ratio in dB',
-            buckets=[-20, -10, 0, 5, 10, 15, 20, 25, 30, 40]
+            "meshcore_snr_db",
+            "Signal-to-noise ratio in dB",
+            buckets=[-20, -10, 0, 5, 10, 15, 20, 25, 30, 40],
         )
 
         self.rssi_dbm = Histogram(
-            'meshcore_rssi_dbm',
-            'Received signal strength in dBm',
-            buckets=[-120, -110, -100, -90, -80, -70, -60, -50, -40]
+            "meshcore_rssi_dbm",
+            "Received signal strength in dBm",
+            buckets=[-120, -110, -100, -90, -80, -70, -60, -50, -40],
         )
 
         # Device statistics
-        self.battery_voltage = Gauge(
-            'meshcore_battery_voltage',
-            'Device battery voltage'
-        )
+        self.battery_voltage = Gauge("meshcore_battery_voltage", "Device battery voltage")
 
-        self.battery_percentage = Gauge(
-            'meshcore_battery_percentage',
-            'Device battery percentage'
-        )
+        self.battery_percentage = Gauge("meshcore_battery_percentage", "Device battery percentage")
 
-        self.storage_used_bytes = Gauge(
-            'meshcore_storage_used_bytes',
-            'Storage used in bytes'
-        )
+        self.storage_used_bytes = Gauge("meshcore_storage_used_bytes", "Storage used in bytes")
 
         self.storage_total_bytes = Gauge(
-            'meshcore_storage_total_bytes',
-            'Total storage capacity in bytes'
+            "meshcore_storage_total_bytes", "Total storage capacity in bytes"
         )
 
         # Radio statistics
         self.radio_noise_floor_dbm = Gauge(
-            'meshcore_radio_noise_floor_dbm',
-            'Radio noise floor in dBm'
+            "meshcore_radio_noise_floor_dbm", "Radio noise floor in dBm"
         )
 
         self.radio_airtime_percent = Gauge(
-            'meshcore_radio_airtime_percent',
-            'Radio airtime utilization percentage'
+            "meshcore_radio_airtime_percent", "Radio airtime utilization percentage"
         )
 
         self.packets_total = Counter(
-            'meshcore_packets_total',
-            'Total packets',
-            ['direction', 'status']
+            "meshcore_packets_total", "Total packets", ["direction", "status"]
         )
 
         # Database metrics
         self.db_table_rows = Gauge(
-            'meshcore_db_table_rows',
-            'Number of rows in database tables',
-            ['table']
+            "meshcore_db_table_rows", "Number of rows in database tables", ["table"]
         )
 
-        self.db_size_bytes = Gauge(
-            'meshcore_db_size_bytes',
-            'Database file size in bytes'
-        )
+        self.db_size_bytes = Gauge("meshcore_db_size_bytes", "Database file size in bytes")
 
         self.db_cleanup_rows_deleted = Counter(
-            'meshcore_db_cleanup_rows_deleted',
-            'Rows deleted during retention cleanup',
-            ['table']
+            "meshcore_db_cleanup_rows_deleted", "Rows deleted during retention cleanup", ["table"]
         )
 
         # Tag metrics
-        self.nodes_by_area = Gauge(
-            'meshcore_nodes_by_area',
-            'Number of nodes by area',
-            ['area']
-        )
+        self.nodes_by_area = Gauge("meshcore_nodes_by_area", "Number of nodes by area", ["area"])
 
         self.nodes_by_role = Gauge(
-            'meshcore_nodes_by_role',
-            'Number of nodes by mesh role',
-            ['role']
+            "meshcore_nodes_by_role", "Number of nodes by mesh role", ["role"]
         )
 
         self.nodes_online = Gauge(
-            'meshcore_nodes_online',
-            'Number of nodes currently online (based on is_online tag)'
+            "meshcore_nodes_online", "Number of nodes currently online (based on is_online tag)"
         )
 
         self.nodes_with_tags = Gauge(
-            'meshcore_nodes_with_tags',
-            'Number of nodes that have at least one tag'
+            "meshcore_nodes_with_tags", "Number of nodes that have at least one tag"
         )
 
         # Application health
         self.connection_status = Gauge(
-            'meshcore_connection_status',
-            'MeshCore connection status (1=connected, 0=disconnected)'
+            "meshcore_connection_status", "MeshCore connection status (1=connected, 0=disconnected)"
         )
 
         self.errors_total = Counter(
-            'meshcore_errors_total',
-            'Total errors encountered',
-            ['component', 'error_type']
+            "meshcore_errors_total", "Total errors encountered", ["component", "error_type"]
         )
 
     def record_event(self, event_type: str) -> None:
@@ -166,10 +122,7 @@ class MetricsCollector:
 
     def record_message(self, direction: str, message_type: str) -> None:
         """Record a message."""
-        self.messages_total.labels(
-            direction=direction,
-            message_type=message_type
-        ).inc()
+        self.messages_total.labels(direction=direction, message_type=message_type).inc()
 
     def record_advertisement(self, adv_type: str) -> None:
         """Record an advertisement."""

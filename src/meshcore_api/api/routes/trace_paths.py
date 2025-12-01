@@ -2,13 +2,14 @@
 
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
+from ...database.models import TracePath
 from ..dependencies import get_db
 from ..schemas import TracePathListResponse
-from ...database.models import TracePath
 
 router = APIRouter()
 
@@ -20,8 +21,12 @@ router = APIRouter()
     description="Get trace path results with optional filters for destination and date range",
 )
 async def query_trace_paths(
-    start_date: Optional[datetime] = Query(None, description="Filter trace paths after this date (ISO 8601)"),
-    end_date: Optional[datetime] = Query(None, description="Filter trace paths before this date (ISO 8601)"),
+    start_date: Optional[datetime] = Query(
+        None, description="Filter trace paths after this date (ISO 8601)"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="Filter trace paths before this date (ISO 8601)"
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of trace paths to return"),
     offset: int = Query(0, ge=0, description="Number of trace paths to skip"),
     db: Session = Depends(get_db),

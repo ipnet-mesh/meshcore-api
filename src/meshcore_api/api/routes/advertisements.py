@@ -2,14 +2,15 @@
 
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db
-from ..schemas import AdvertisementListResponse
 from ...database.models import Advertisement
 from ...utils.address import normalize_public_key, validate_public_key
+from ..dependencies import get_db
+from ..schemas import AdvertisementListResponse
 
 router = APIRouter()
 
@@ -21,11 +22,24 @@ router = APIRouter()
     description="Get node advertisements with optional filters for node public key (full 64 chars), type, and date range",
 )
 async def query_advertisements(
-    node_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by node public key (full 64 hex characters)"),
-    adv_type: Optional[str] = Query(None, description="Filter by advertisement type (none/chat/repeater/room)"),
-    start_date: Optional[datetime] = Query(None, description="Filter advertisements after this date (ISO 8601)"),
-    end_date: Optional[datetime] = Query(None, description="Filter advertisements before this date (ISO 8601)"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of advertisements to return"),
+    node_public_key: Optional[str] = Query(
+        None,
+        min_length=64,
+        max_length=64,
+        description="Filter by node public key (full 64 hex characters)",
+    ),
+    adv_type: Optional[str] = Query(
+        None, description="Filter by advertisement type (none/chat/repeater/room)"
+    ),
+    start_date: Optional[datetime] = Query(
+        None, description="Filter advertisements after this date (ISO 8601)"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="Filter advertisements before this date (ISO 8601)"
+    ),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of advertisements to return"
+    ),
     offset: int = Query(0, ge=0, description="Number of advertisements to skip"),
     db: Session = Depends(get_db),
 ) -> AdvertisementListResponse:

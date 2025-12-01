@@ -2,14 +2,15 @@
 
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db
-from ..schemas import MessageListResponse
 from ...database.models import Message
 from ...utils.address import normalize_public_key, validate_public_key
+from ..dependencies import get_db
+from ..schemas import MessageListResponse
 
 router = APIRouter()
 
@@ -21,11 +22,24 @@ router = APIRouter()
     description="Get messages with optional filters for sender public key (full 64 chars), channel, type, and sender timestamp range",
 )
 async def query_messages(
-    sender_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by sender public key (full 64 hex characters)"),
-    channel_idx: Optional[int] = Query(None, description="Filter by channel index (channel messages)"),
-    message_type: Optional[str] = Query(None, description="Filter by message type (contact/channel)"),
-    start_date: Optional[datetime] = Query(None, description="Filter messages after this sender_timestamp (ISO 8601)"),
-    end_date: Optional[datetime] = Query(None, description="Filter messages before this sender_timestamp (ISO 8601)"),
+    sender_public_key: Optional[str] = Query(
+        None,
+        min_length=64,
+        max_length=64,
+        description="Filter by sender public key (full 64 hex characters)",
+    ),
+    channel_idx: Optional[int] = Query(
+        None, description="Filter by channel index (channel messages)"
+    ),
+    message_type: Optional[str] = Query(
+        None, description="Filter by message type (contact/channel)"
+    ),
+    start_date: Optional[datetime] = Query(
+        None, description="Filter messages after this sender_timestamp (ISO 8601)"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="Filter messages before this sender_timestamp (ISO 8601)"
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of messages to return"),
     offset: int = Query(0, ge=0, description="Number of messages to skip"),
     db: Session = Depends(get_db),

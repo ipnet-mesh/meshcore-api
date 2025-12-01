@@ -3,9 +3,11 @@
 import logging
 from datetime import datetime, timezone
 from typing import Callable, List, Optional
-from meshcore import MeshCore as MeshCorePy
+
 from meshcore import EventType
-from .interface import MeshCoreInterface, Event, Contact
+from meshcore import MeshCore as MeshCorePy
+
+from .interface import Contact, Event, MeshCoreInterface
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +33,7 @@ class RealMeshCore(MeshCoreInterface):
         try:
             logger.info(f"Connecting to MeshCore on {self.serial_port} at {self.baud_rate} baud")
             self.meshcore = await MeshCorePy.create_serial(
-                self.serial_port,
-                self.baud_rate,
-                debug=False
+                self.serial_port, self.baud_rate, debug=False
             )
 
             # Subscribe to all event types
@@ -43,7 +43,7 @@ class RealMeshCore(MeshCoreInterface):
                 self.meshcore.subscribe(event_type, self._handle_meshcore_event)
 
             # Start auto message fetching if available
-            if hasattr(self.meshcore, 'start_auto_message_fetching'):
+            if hasattr(self.meshcore, "start_auto_message_fetching"):
                 logger.info("Starting auto message fetching")
                 await self.meshcore.start_auto_message_fetching()
 
@@ -77,7 +77,9 @@ class RealMeshCore(MeshCoreInterface):
     async def subscribe_to_events(self, handler: Callable[[Event], None]) -> None:
         """Subscribe to all MeshCore events."""
         self._event_handlers.append(handler)
-        logger.info(f"Added event handler: {handler.__name__} (total handlers: {len(self._event_handlers)})")
+        logger.info(
+            f"Added event handler: {handler.__name__} (total handlers: {len(self._event_handlers)})"
+        )
 
     async def sync_clock(self) -> Event:
         """Sync MeshCore clock to host time."""
@@ -90,8 +92,8 @@ class RealMeshCore(MeshCoreInterface):
             logger.info(f"Syncing MeshCore clock to {now.isoformat()}")
             result = await self.meshcore.commands.set_time(timestamp)
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to sync MeshCore clock: {e}")
@@ -114,7 +116,7 @@ class RealMeshCore(MeshCoreInterface):
             raise ValueError("Destination cannot be empty")
 
         # If destination looks like a full key (64 hex chars), return as-is
-        if len(destination) == 64 and all(c in '0123456789abcdefABCDEF' for c in destination):
+        if len(destination) == 64 and all(c in "0123456789abcdefABCDEF" for c in destination):
             return destination.lower()
 
         # Require at least 2 characters for prefix matching
@@ -148,18 +150,15 @@ class RealMeshCore(MeshCoreInterface):
             logger.debug(f"Received MeshCore event: {event}")
 
             # Convert meshcore_py event to our Event format
-            event_type = event.type.name if hasattr(event.type, 'name') else str(event.type)
-            event_payload = event.payload if hasattr(event, 'payload') else {}
+            event_type = event.type.name if hasattr(event.type, "name") else str(event.type)
+            event_payload = event.payload if hasattr(event, "payload") else {}
 
             if event_type == "NEXT_CONTACT":
                 logger.debug(f"Processing event: {event_type}")
             else:
                 logger.info(f"Processing event: {event_type}")
 
-            our_event = Event(
-                type=event_type,
-                payload=event_payload
-            )
+            our_event = Event(type=event_type, payload=event_payload)
 
             # Dispatch to all registered handlers
             logger.debug(f"Dispatching to {len(self._event_handlers)} handlers")
@@ -182,8 +181,8 @@ class RealMeshCore(MeshCoreInterface):
             resolved_dest = await self._resolve_destination(destination)
             result = await self.meshcore.commands.send_msg(resolved_dest, text)
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to send message: {e}")
@@ -199,8 +198,8 @@ class RealMeshCore(MeshCoreInterface):
             # Note: flood parameter is not used by send_chan_msg
             result = await self.meshcore.commands.send_chan_msg(chan=0, msg=text)
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to send channel message: {e}")
@@ -214,8 +213,8 @@ class RealMeshCore(MeshCoreInterface):
         try:
             result = await self.meshcore.commands.send_advert(flood=flood)
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to send advertisement: {e}")
@@ -231,8 +230,8 @@ class RealMeshCore(MeshCoreInterface):
             resolved_dest = await self._resolve_destination(destination)
             result = await self.meshcore.commands.send_path_discovery(resolved_dest)
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to send trace path: {e}")
@@ -249,8 +248,8 @@ class RealMeshCore(MeshCoreInterface):
             # MeshCore doesn't have a dedicated ping, so use status request
             result = await self.meshcore.commands.send_statusreq(resolved_dest)
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to ping node: {e}")
@@ -266,8 +265,8 @@ class RealMeshCore(MeshCoreInterface):
             resolved_dest = await self._resolve_destination(destination)
             result = await self.meshcore.commands.send_telemetry_req(resolved_dest)
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to send telemetry request: {e}")
@@ -281,8 +280,8 @@ class RealMeshCore(MeshCoreInterface):
         try:
             result = await self.meshcore.commands.send_device_query()
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to get device info: {e}")
@@ -296,8 +295,8 @@ class RealMeshCore(MeshCoreInterface):
         try:
             result = await self.meshcore.commands.get_bat()
             return Event(
-                type=result.type.name if hasattr(result.type, 'name') else str(result.type),
-                payload=result.payload if hasattr(result, 'payload') else {}
+                type=result.type.name if hasattr(result.type, "name") else str(result.type),
+                payload=result.payload if hasattr(result, "payload") else {},
             )
         except Exception as e:
             logger.error(f"Failed to get battery status: {e}")
@@ -317,7 +316,9 @@ class RealMeshCore(MeshCoreInterface):
                 contact = Contact(
                     public_key=mc_contact.get("public_key", ""),
                     name=mc_contact.get("adv_name") or mc_contact.get("name"),
-                    node_type=mc_contact.get("node_type") or mc_contact.get("type") or mc_contact.get("adv_type"),
+                    node_type=mc_contact.get("node_type")
+                    or mc_contact.get("type")
+                    or mc_contact.get("adv_type"),
                 )
                 contacts.append(contact)
 

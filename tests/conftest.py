@@ -304,7 +304,8 @@ def sample_events() -> dict[str, dict]:
 def sample_tags() -> dict[str, dict]:
     """Generate sample node tags for testing."""
     return {
-        "a" * 64: {
+        "a"
+        * 64: {
             "friendly_name": {"value_type": "string", "value": "Gateway Node"},
             "location": {
                 "value_type": "coordinate",
@@ -313,7 +314,8 @@ def sample_tags() -> dict[str, dict]:
             "is_gateway": {"value_type": "boolean", "value": True},
             "battery_count": {"value_type": "number", "value": 4},
         },
-        "b" * 64: {
+        "b"
+        * 64: {
             "friendly_name": {"value_type": "string", "value": "Repeater Node"},
             "is_repeater": {"value_type": "boolean", "value": True},
         },

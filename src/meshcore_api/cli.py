@@ -9,8 +9,8 @@ from pathlib import Path
 import click
 
 from .config import Config
-from .utils.logging import setup_logging
 from .query import DatabaseQuery
+from .utils.logging import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +278,7 @@ def query(db_path, summary, events, nodes, messages, advertisements, telemetry, 
     # Use Config to resolve db_path with same priority as server command
     cli_args = {}
     if db_path is not None:
-        cli_args['db_path'] = db_path
+        cli_args["db_path"] = db_path
 
     config = Config.from_args_and_env(cli_args)
 
@@ -286,9 +286,18 @@ def query(db_path, summary, events, nodes, messages, advertisements, telemetry, 
         db = DatabaseQuery(config.db_path)
 
         # If no specific options, show full report
-        if not any([summary, events, nodes is not None, messages is not None,
-                   advertisements is not None, telemetry is not None,
-                   traces is not None, activity is not None]):
+        if not any(
+            [
+                summary,
+                events,
+                nodes is not None,
+                messages is not None,
+                advertisements is not None,
+                telemetry is not None,
+                traces is not None,
+                activity is not None,
+            ]
+        ):
             db.print_full_report()
         else:
             # Show requested sections
@@ -391,13 +400,13 @@ def tag(json_file, db_path, dry_run, verbose, continue_on_error, validate_only):
       # Validate only without applying
       meshcore_api tag node_tags.json --validate-only
     """
-    from .tag_importer import TagImporter
     from .database.engine import DatabaseEngine
+    from .tag_importer import TagImporter
 
     # Use Config to resolve db_path with same priority as server command
     cli_args = {}
     if db_path is not None:
-        cli_args['db_path'] = db_path
+        cli_args["db_path"] = db_path
 
     config = Config.from_args_and_env(cli_args)
 
@@ -413,7 +422,7 @@ def tag(json_file, db_path, dry_run, verbose, continue_on_error, validate_only):
             dry_run=dry_run,
             continue_on_error=continue_on_error,
             validate_only=validate_only,
-            verbose=verbose
+            verbose=verbose,
         )
 
         # Close database

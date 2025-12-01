@@ -10,7 +10,7 @@ class TestConstants:
 
     def test_node_type_map_structure(self):
         """Test that NODE_TYPE_MAP has correct structure."""
-        assert hasattr(const, 'NODE_TYPE_MAP')
+        assert hasattr(const, "NODE_TYPE_MAP")
         assert isinstance(const.NODE_TYPE_MAP, dict)
 
         # Check that it contains expected node types

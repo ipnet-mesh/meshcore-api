@@ -3,15 +3,28 @@
 import os
 import time
 from typing import Dict
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db, get_meshcore, get_command_queue
-from ..schemas import HealthCheckResponse, DatabaseHealthResponse, MeshCoreHealthResponse, QueueStatsSchema
-from ...database.models import Node, Message, Advertisement, TracePath, Telemetry, EventLog
+from ...database.models import (
+    Advertisement,
+    EventLog,
+    Message,
+    Node,
+    Telemetry,
+    TracePath,
+)
 from ...meshcore.interface import MeshCoreInterface
 from ...queue import CommandQueueManager
+from ..dependencies import get_command_queue, get_db, get_meshcore
+from ..schemas import (
+    DatabaseHealthResponse,
+    HealthCheckResponse,
+    MeshCoreHealthResponse,
+    QueueStatsSchema,
+)
 
 router = APIRouter()
 
@@ -57,7 +70,9 @@ async def health_check(
         pass
 
     # Check MeshCore connectivity
-    meshcore_connected = await meshcore.is_connected() if hasattr(meshcore, 'is_connected') else True
+    meshcore_connected = (
+        await meshcore.is_connected() if hasattr(meshcore, "is_connected") else True
+    )
 
     # Calculate uptime
     uptime = time.time() - _start_time
@@ -144,7 +159,7 @@ async def meshcore_health(
         MeshCore health response with connection status and device info
     """
     # Check if connected
-    connected = await meshcore.is_connected() if hasattr(meshcore, 'is_connected') else True
+    connected = await meshcore.is_connected() if hasattr(meshcore, "is_connected") else True
 
     # Determine mode (real or mock)
     mode = "mock" if "Mock" in meshcore.__class__.__name__ else "real"

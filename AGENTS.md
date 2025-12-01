@@ -4,11 +4,12 @@
 * You MUST activate a Python virtual environment in the `venv` directory or create one if it does not exist:
   - `ls ./venv` to check if it exists
   - `python -m venv .venv` to create it
-- You MUST always activate the virtual environment before running any commands
+* You MUST always activate the virtual environment before running any commands
   - `source .venv/bin/activate`
 * You MUST install all project dependencies using `pip install -e ".[dev]"` command`
+* You MUST install `pre-commit` for quality checks
 * Before commiting:
-  - Run tests with `pytest` and fix any issues
+  - Run `pre-commit run --all-files` to perform all quality checks
 
 ## Useful Commands:
 

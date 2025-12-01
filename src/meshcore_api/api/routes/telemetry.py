@@ -2,14 +2,15 @@
 
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db
-from ..schemas import TelemetryListResponse
 from ...database.models import Telemetry
 from ...utils.address import normalize_public_key, validate_public_key
+from ..dependencies import get_db
+from ..schemas import TelemetryListResponse
 
 router = APIRouter()
 
@@ -21,10 +22,21 @@ router = APIRouter()
     description="Get telemetry data with optional filters for node public key (full 64 chars) and date range",
 )
 async def query_telemetry(
-    node_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by node public key (full 64 hex characters)"),
-    start_date: Optional[datetime] = Query(None, description="Filter telemetry after this date (ISO 8601)"),
-    end_date: Optional[datetime] = Query(None, description="Filter telemetry before this date (ISO 8601)"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of telemetry records to return"),
+    node_public_key: Optional[str] = Query(
+        None,
+        min_length=64,
+        max_length=64,
+        description="Filter by node public key (full 64 hex characters)",
+    ),
+    start_date: Optional[datetime] = Query(
+        None, description="Filter telemetry after this date (ISO 8601)"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="Filter telemetry before this date (ISO 8601)"
+    ),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of telemetry records to return"
+    ),
     offset: int = Query(0, ge=0, description="Number of telemetry records to skip"),
     db: Session = Depends(get_db),
 ) -> TelemetryListResponse:

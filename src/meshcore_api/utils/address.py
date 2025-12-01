@@ -15,7 +15,7 @@ def is_valid_public_key(key: str) -> bool:
     """
     if not key:
         return False
-    return bool(re.match(r'^[0-9a-fA-F]+$', key))
+    return bool(re.match(r"^[0-9a-fA-F]+$", key))
 
 
 def validate_public_key(key: str, allow_prefix: bool = False) -> bool:

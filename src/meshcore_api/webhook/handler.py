@@ -130,8 +130,7 @@ class WebhookHandler:
 
         except Exception as e:
             logger.error(
-                f"Error applying JSONPath for {event_type}: {e}. "
-                f"Sending full payload."
+                f"Error applying JSONPath for {event_type}: {e}. " f"Sending full payload."
             )
             return payload
 
@@ -181,23 +180,19 @@ class WebhookHandler:
         # Prepare request based on payload type
         if isinstance(payload, (dict, list)):
             # Send as JSON
-            request_kwargs = {
-                "json": payload,
-                "headers": {"Content-Type": "application/json"}
-            }
-            event_type = payload.get("event_type", "unknown") if isinstance(payload, dict) else "unknown"
+            request_kwargs = {"json": payload, "headers": {"Content-Type": "application/json"}}
+            event_type = (
+                payload.get("event_type", "unknown") if isinstance(payload, dict) else "unknown"
+            )
         elif isinstance(payload, str):
             # Send as plain text
-            request_kwargs = {
-                "content": payload,
-                "headers": {"Content-Type": "text/plain"}
-            }
+            request_kwargs = {"content": payload, "headers": {"Content-Type": "text/plain"}}
             event_type = "unknown"
         else:
             # Send primitives (numbers, booleans) as JSON
             request_kwargs = {
                 "content": json.dumps(payload),
-                "headers": {"Content-Type": "application/json"}
+                "headers": {"Content-Type": "application/json"},
             }
             event_type = "unknown"
 
@@ -218,9 +213,7 @@ class WebhookHandler:
                     f"{e.response.status_code} - {url}"
                 )
             except httpx.TimeoutException:
-                logger.warning(
-                    f"Webhook timeout (attempt {attempt + 1}/{total_attempts}): {url}"
-                )
+                logger.warning(f"Webhook timeout (attempt {attempt + 1}/{total_attempts}): {url}")
             except Exception as e:
                 logger.warning(
                     f"Webhook error (attempt {attempt + 1}/{total_attempts}): "

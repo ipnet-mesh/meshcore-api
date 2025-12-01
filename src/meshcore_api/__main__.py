@@ -5,21 +5,26 @@ import logging
 import signal
 import sys
 from typing import Optional
+
 import uvicorn
 
+from .api.app import create_app
+from .api.dependencies import (
+    set_command_queue_instance,
+    set_config_instance,
+    set_meshcore_instance,
+)
 from .config import Config
-from .database.engine import init_database, session_scope
-from .database.models import Node, Advertisement
 from .database.cleanup import DataCleanup
-from .meshcore import RealMeshCore, MockMeshCore, MeshCoreInterface
+from .database.engine import init_database, session_scope
+from .database.models import Advertisement, Node
+from .meshcore import MeshCoreInterface, MockMeshCore, RealMeshCore
+from .queue import CommandQueueManager, CommandType, QueueFullBehavior
 from .subscriber.event_handler import EventHandler
 from .subscriber.metrics import get_metrics
 from .subscriber.metrics_updater import update_database_metrics
 from .utils.logging import setup_logging
-from .api.app import create_app
-from .api.dependencies import set_meshcore_instance, set_config_instance, set_command_queue_instance
 from .webhook import WebhookHandler
-from .queue import CommandQueueManager, CommandType, QueueFullBehavior
 
 logger = logging.getLogger(__name__)
 
@@ -91,11 +96,13 @@ class Application:
             metrics.set_connection_status(True)
 
         # Initialize webhook handler if any webhook URLs are configured
-        if any([
-            self.config.webhook_message_direct,
-            self.config.webhook_message_channel,
-            self.config.webhook_advertisement,
-        ]):
+        if any(
+            [
+                self.config.webhook_message_direct,
+                self.config.webhook_message_channel,
+                self.config.webhook_advertisement,
+            ]
+        ):
             logger.info("Initializing webhook handler")
             self.webhook_handler = WebhookHandler(
                 message_direct_url=self.config.webhook_message_direct,
@@ -122,7 +129,7 @@ class Application:
         logger.info("Initializing command queue manager...")
         debounce_commands = set()
         if self.config.debounce_commands:
-            for cmd_str in self.config.debounce_commands.split(','):
+            for cmd_str in self.config.debounce_commands.split(","):
                 cmd_str = cmd_str.strip()
                 try:
                     debounce_commands.add(CommandType(cmd_str))
@@ -332,7 +339,9 @@ class Application:
             if contacts:
                 logger.info(f"Retrieved {len(contacts)} contacts from device")
                 for contact in contacts:
-                    logger.debug(f"  - {contact.public_key[:8]}... ({contact.name or 'unnamed'}, {contact.node_type or 'unknown'})")
+                    logger.debug(
+                        f"  - {contact.public_key[:8]}... ({contact.name or 'unnamed'}, {contact.node_type or 'unknown'})"
+                    )
             else:
                 logger.info("No contacts found on device")
         except Exception as e:
@@ -347,7 +356,9 @@ class Application:
             logger.info("Sending startup advertisement")
             result = await self.meshcore.send_advert(flood=True)
             if result.type == "ERROR":
-                logger.error(f"Startup advertisement failed: {result.payload.get('error', result.payload)}")
+                logger.error(
+                    f"Startup advertisement failed: {result.payload.get('error', result.payload)}"
+                )
             else:
                 logger.info("Startup advertisement sent successfully")
         except Exception as e:
@@ -373,6 +384,7 @@ class Application:
 def main() -> None:
     """Main entry point - delegates to CLI."""
     from .cli import cli
+
     cli()
 
 

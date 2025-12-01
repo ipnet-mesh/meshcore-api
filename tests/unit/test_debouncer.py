@@ -107,8 +107,7 @@ class TestCommandDebouncerCheckDuplicate:
         )
 
         is_dup, hash_val, time_val = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            {"destination": "abc123", "text": "Hello"}
+            CommandType.SEND_MESSAGE, {"destination": "abc123", "text": "Hello"}
         )
 
         assert is_dup is False
@@ -126,8 +125,7 @@ class TestCommandDebouncerCheckDuplicate:
 
         # Try a different command type
         is_dup, hash_val, time_val = await debouncer.check_duplicate(
-            CommandType.SEND_TRACE_PATH,
-            {"destination": "abc123"}
+            CommandType.SEND_TRACE_PATH, {"destination": "abc123"}
         )
 
         assert is_dup is False
@@ -143,8 +141,7 @@ class TestCommandDebouncerCheckDuplicate:
         )
 
         is_dup, hash_val, time_val = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            {"destination": "abc123", "text": "Hello"}
+            CommandType.SEND_MESSAGE, {"destination": "abc123", "text": "Hello"}
         )
 
         assert is_dup is False
@@ -163,17 +160,11 @@ class TestCommandDebouncerCheckDuplicate:
         params = {"destination": "abc123", "text": "Hello"}
 
         # First occurrence
-        is_dup1, hash1, time1 = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            params
-        )
+        is_dup1, hash1, time1 = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params)
         assert is_dup1 is False
 
         # Second occurrence (should be duplicate)
-        is_dup2, hash2, time2 = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            params
-        )
+        is_dup2, hash2, time2 = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params)
 
         assert is_dup2 is True
         assert hash2 == hash1
@@ -191,20 +182,14 @@ class TestCommandDebouncerCheckDuplicate:
         params = {"destination": "abc123", "text": "Hello"}
 
         # First occurrence
-        is_dup1, hash1, _ = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            params
-        )
+        is_dup1, hash1, _ = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params)
         assert is_dup1 is False
 
         # Wait for expiry
         await asyncio.sleep(0.15)
 
         # Should not be duplicate anymore
-        is_dup2, hash2, time2 = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            params
-        )
+        is_dup2, hash2, time2 = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params)
 
         assert is_dup2 is False
         assert time2 is None
@@ -223,10 +208,7 @@ class TestCommandDebouncerCompletion:
         )
 
         params = {"destination": "abc123", "text": "Hello"}
-        is_dup, cmd_hash, _ = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            params
-        )
+        is_dup, cmd_hash, _ = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params)
 
         # Mark as completed
         result = CommandResult(success=True, message="Sent successfully", request_id="test-req")
@@ -247,10 +229,7 @@ class TestCommandDebouncerCompletion:
         )
 
         params = {"destination": "abc123", "text": "Hello"}
-        is_dup, cmd_hash, _ = await debouncer.check_duplicate(
-            CommandType.SEND_MESSAGE,
-            params
-        )
+        is_dup, cmd_hash, _ = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params)
 
         # Add waiters
         waiter1 = await debouncer.add_waiter(cmd_hash)
@@ -298,8 +277,7 @@ class TestCommandDebouncerCacheManagement:
             # Mark first few as completed so they can be evicted
             if i < 2:
                 is_dup, cmd_hash, _ = await debouncer.check_duplicate(
-                    CommandType.SEND_MESSAGE,
-                    params
+                    CommandType.SEND_MESSAGE, params
                 )
                 result = CommandResult(success=True, message="Done", request_id="test-req")
                 await debouncer.mark_completed(cmd_hash, result)
@@ -318,12 +296,16 @@ class TestCommandDebouncerCacheManagement:
         # Add and complete first command
         params1 = {"destination": "abc123", "text": "First"}
         _, hash1, _ = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params1)
-        await debouncer.mark_completed(hash1, CommandResult(success=True, message="Done1", request_id="test-req"))
+        await debouncer.mark_completed(
+            hash1, CommandResult(success=True, message="Done1", request_id="test-req")
+        )
 
         # Add and complete second command
         params2 = {"destination": "abc123", "text": "Second"}
         _, hash2, _ = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params2)
-        await debouncer.mark_completed(hash2, CommandResult(success=True, message="Done2", request_id="test-req"))
+        await debouncer.mark_completed(
+            hash2, CommandResult(success=True, message="Done2", request_id="test-req")
+        )
 
         # Add third command (should evict oldest completed)
         params3 = {"destination": "abc123", "text": "Third"}
@@ -374,7 +356,9 @@ class TestCommandDebouncerCleanup:
         # Add and complete a command
         params = {"destination": "abc123", "text": "Hello"}
         _, cmd_hash, _ = await debouncer.check_duplicate(CommandType.SEND_MESSAGE, params)
-        await debouncer.mark_completed(cmd_hash, CommandResult(success=True, message="Done", request_id="test-req"))
+        await debouncer.mark_completed(
+            cmd_hash, CommandResult(success=True, message="Done", request_id="test-req")
+        )
 
         assert debouncer.get_cache_size() == 1
 

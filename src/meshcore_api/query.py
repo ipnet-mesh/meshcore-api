@@ -6,6 +6,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+
 from .constants import node_type_name
 
 try:
@@ -94,9 +95,8 @@ class DatabaseQuery:
         print("-" * 80)
 
         self.cursor.execute(
-            "SELECT event_type, created_at FROM events_log "
-            "ORDER BY created_at DESC LIMIT ?",
-            (limit,)
+            "SELECT event_type, created_at FROM events_log " "ORDER BY created_at DESC LIMIT ?",
+            (limit,),
         )
         results = self.cursor.fetchall()
 
@@ -115,7 +115,7 @@ class DatabaseQuery:
         self.cursor.execute(
             "SELECT public_key, name, public_key_prefix_8, node_type, last_seen, first_seen "
             "FROM nodes ORDER BY last_seen DESC LIMIT ?",
-            (limit,)
+            (limit,),
         )
         results = self.cursor.fetchall()
 
@@ -133,20 +133,28 @@ class DatabaseQuery:
                 self.cursor.execute(
                     "SELECT key, value_type, value_string, value_number, value_boolean, "
                     "latitude, longitude FROM node_tags WHERE node_public_key = ? ORDER BY key",
-                    (public_key,)
+                    (public_key,),
                 )
                 tags = self.cursor.fetchall()
 
                 if tags:
                     print("    Tags:")
-                    for key, value_type, value_string, value_number, value_boolean, latitude, longitude in tags:
-                        if value_type == 'string':
+                    for (
+                        key,
+                        value_type,
+                        value_string,
+                        value_number,
+                        value_boolean,
+                        latitude,
+                        longitude,
+                    ) in tags:
+                        if value_type == "string":
                             value = value_string
-                        elif value_type == 'number':
+                        elif value_type == "number":
                             value = value_number
-                        elif value_type == 'boolean':
+                        elif value_type == "boolean":
                             value = bool(value_boolean)
-                        elif value_type == 'coordinate':
+                        elif value_type == "coordinate":
                             value = f"({latitude}, {longitude})"
                         else:
                             value = "unknown"
@@ -164,12 +172,24 @@ class DatabaseQuery:
             "SELECT direction, message_type, pubkey_prefix, channel_idx, txt_type, path_len, signature, "
             "content, snr, sender_timestamp, received_at "
             "FROM messages ORDER BY received_at DESC LIMIT ?",
-            (limit,)
+            (limit,),
         )
         results = self.cursor.fetchall()
 
         if results:
-            for idx, (direction, msg_type, pubkey_prefix, channel_idx, txt_type, path_len, signature, content, snr, ts, recv) in enumerate(results, 1):
+            for idx, (
+                direction,
+                msg_type,
+                pubkey_prefix,
+                channel_idx,
+                txt_type,
+                path_len,
+                signature,
+                content,
+                snr,
+                ts,
+                recv,
+            ) in enumerate(results, 1):
                 print(f"\n  Message #{idx}")
                 print(f"    Direction: {direction}")
                 print(f"    Type: {msg_type}")
@@ -200,7 +220,7 @@ class DatabaseQuery:
         self.cursor.execute(
             "SELECT public_key, adv_type, name, flags, received_at "
             "FROM advertisements ORDER BY received_at DESC LIMIT ?",
-            (limit,)
+            (limit,),
         )
         results = self.cursor.fetchall()
 
@@ -225,7 +245,7 @@ class DatabaseQuery:
         self.cursor.execute(
             "SELECT node_public_key, parsed_data, received_at "
             "FROM telemetry ORDER BY received_at DESC LIMIT ?",
-            (limit,)
+            (limit,),
         )
         results = self.cursor.fetchall()
 
@@ -255,12 +275,14 @@ class DatabaseQuery:
             "SELECT initiator_tag, path_len, flags, auth, path_hashes, "
             "snr_values, hop_count, completed_at "
             "FROM trace_paths ORDER BY completed_at DESC LIMIT ?",
-            (limit,)
+            (limit,),
         )
         results = self.cursor.fetchall()
 
         if results:
-            for idx, (tag, path_len, flags, auth, hashes, snrs, hops, completed) in enumerate(results, 1):
+            for idx, (tag, path_len, flags, auth, hashes, snrs, hops, completed) in enumerate(
+                results, 1
+            ):
                 print(f"\n  Trace Path #{idx}")
                 print(f"    Initiator Tag: 0x{tag:08x}")
                 if path_len is not None:
@@ -299,7 +321,7 @@ class DatabaseQuery:
             "SELECT event_type, COUNT(*) as count "
             "FROM events_log WHERE created_at >= ? "
             "GROUP BY event_type ORDER BY count DESC",
-            (cutoff_str,)
+            (cutoff_str,),
         )
         results = self.cursor.fetchall()
 
@@ -349,33 +371,24 @@ Examples:
 
   # Activity in last 6 hours
   python -m meshcore_api.query --activity 6
-        """
+        """,
     )
 
     parser.add_argument(
         "--db-path",
         type=str,
         default="./data/meshcore.db",
-        help="Path to database file (default: ./data/meshcore.db)"
+        help="Path to database file (default: ./data/meshcore.db)",
     )
-    parser.add_argument(
-        "--summary",
-        action="store_true",
-        help="Show summary statistics only"
-    )
-    parser.add_argument(
-        "--events",
-        type=int,
-        metavar="N",
-        help="Show N recent events"
-    )
+    parser.add_argument("--summary", action="store_true", help="Show summary statistics only")
+    parser.add_argument("--events", type=int, metavar="N", help="Show N recent events")
     parser.add_argument(
         "--nodes",
         type=int,
         metavar="N",
         nargs="?",
         const=10,
-        help="Show N discovered nodes (default: 10)"
+        help="Show N discovered nodes (default: 10)",
     )
     parser.add_argument(
         "--messages",
@@ -383,7 +396,7 @@ Examples:
         metavar="N",
         nargs="?",
         const=10,
-        help="Show N recent messages (default: 10)"
+        help="Show N recent messages (default: 10)",
     )
     parser.add_argument(
         "--advertisements",
@@ -391,7 +404,7 @@ Examples:
         metavar="N",
         nargs="?",
         const=10,
-        help="Show N recent advertisements (default: 10)"
+        help="Show N recent advertisements (default: 10)",
     )
     parser.add_argument(
         "--telemetry",
@@ -399,7 +412,7 @@ Examples:
         metavar="N",
         nargs="?",
         const=5,
-        help="Show N recent telemetry entries (default: 5)"
+        help="Show N recent telemetry entries (default: 5)",
     )
     parser.add_argument(
         "--traces",
@@ -407,7 +420,7 @@ Examples:
         metavar="N",
         nargs="?",
         const=5,
-        help="Show N recent trace paths (default: 5)"
+        help="Show N recent trace paths (default: 5)",
     )
     parser.add_argument(
         "--activity",
@@ -415,7 +428,7 @@ Examples:
         metavar="HOURS",
         nargs="?",
         const=24,
-        help="Show activity timeline for last N hours (default: 24)"
+        help="Show activity timeline for last N hours (default: 24)",
     )
 
     args = parser.parse_args()
@@ -424,16 +437,18 @@ Examples:
         db = DatabaseQuery(args.db_path)
 
         # If no specific options, show full report
-        if not any([
-            args.summary,
-            args.events,
-            args.nodes is not None,
-            args.messages is not None,
-            args.advertisements is not None,
-            args.telemetry is not None,
-            args.traces is not None,
-            args.activity is not None,
-        ]):
+        if not any(
+            [
+                args.summary,
+                args.events,
+                args.nodes is not None,
+                args.messages is not None,
+                args.advertisements is not None,
+                args.telemetry is not None,
+                args.traces is not None,
+                args.activity is not None,
+            ]
+        ):
             db.print_full_report()
         else:
             # Show requested sections

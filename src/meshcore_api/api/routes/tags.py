@@ -2,19 +2,26 @@
 
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db, check_write_enabled
-from ..schemas import (
-    NodeResponse, NodeListResponse,
-    NodeTagResponse, NodeTagListResponse, TagValueRequest, TagValueUpdateRequest,
-    BulkTagUpdateRequest, BulkTagUpdateResponse, TagKeysResponse,
-    CoordinateValue,
-)
 from ...database.models import Node, NodeTag
-from ...utils.address import normalize_public_key, extract_prefix
+from ...utils.address import extract_prefix, normalize_public_key
+from ..dependencies import check_write_enabled, get_db
+from ..schemas import (
+    BulkTagUpdateRequest,
+    BulkTagUpdateResponse,
+    CoordinateValue,
+    NodeListResponse,
+    NodeResponse,
+    NodeTagListResponse,
+    NodeTagResponse,
+    TagKeysResponse,
+    TagValueRequest,
+    TagValueUpdateRequest,
+)
 
 router = APIRouter()
 
@@ -54,13 +61,13 @@ def validate_full_public_key(public_key: str) -> str:
 
 def db_model_to_response(tag: NodeTag) -> NodeTagResponse:
     """Convert database model to API response."""
-    if tag.value_type == 'string':
+    if tag.value_type == "string":
         value = tag.value_string
-    elif tag.value_type == 'number':
+    elif tag.value_type == "number":
         value = tag.value_number
-    elif tag.value_type == 'boolean':
+    elif tag.value_type == "boolean":
         value = tag.value_boolean
-    elif tag.value_type == 'coordinate':
+    elif tag.value_type == "coordinate":
         value = CoordinateValue(latitude=tag.latitude, longitude=tag.longitude)
     else:
         raise ValueError(f"Unknown value type: {tag.value_type}")
@@ -72,7 +79,7 @@ def db_model_to_response(tag: NodeTag) -> NodeTagResponse:
         value_type=tag.value_type,
         value=value,
         created_at=tag.created_at,
-        updated_at=tag.updated_at
+        updated_at=tag.updated_at,
     )
 
 
@@ -91,13 +98,14 @@ def ensure_node_exists(db: Session, public_key: str) -> Node:
     return node
 
 
-def create_or_update_tag(db: Session, node_public_key: str, tag_request: TagValueRequest) -> NodeTag:
+def create_or_update_tag(
+    db: Session, node_public_key: str, tag_request: TagValueRequest
+) -> NodeTag:
     """Create or update a tag with proper type handling."""
     # Check if tag exists
-    existing = db.query(NodeTag).filter_by(
-        node_public_key=node_public_key,
-        key=tag_request.key
-    ).first()
+    existing = (
+        db.query(NodeTag).filter_by(node_public_key=node_public_key, key=tag_request.key).first()
+    )
 
     # Prepare values
     value_string = None
@@ -106,13 +114,13 @@ def create_or_update_tag(db: Session, node_public_key: str, tag_request: TagValu
     latitude = None
     longitude = None
 
-    if tag_request.value_type == 'string':
+    if tag_request.value_type == "string":
         value_string = tag_request.value
-    elif tag_request.value_type == 'number':
+    elif tag_request.value_type == "number":
         value_number = float(tag_request.value)
-    elif tag_request.value_type == 'boolean':
+    elif tag_request.value_type == "boolean":
         value_boolean = tag_request.value
-    elif tag_request.value_type == 'coordinate':
+    elif tag_request.value_type == "coordinate":
         latitude = tag_request.value.latitude
         longitude = tag_request.value.longitude
 
@@ -177,12 +185,7 @@ async def get_node_tags(
     # Convert to response models
     tag_responses = [db_model_to_response(tag) for tag in tags]
 
-    return NodeTagListResponse(
-        tags=tag_responses,
-        total=total,
-        limit=limit,
-        offset=offset
-    )
+    return NodeTagListResponse(tags=tag_responses, total=total, limit=limit, offset=offset)
 
 
 @router.get(
@@ -211,10 +214,7 @@ async def get_node_tag(
     normalized_key = validate_full_public_key(public_key)
 
     # Query tag
-    tag = db.query(NodeTag).filter_by(
-        node_public_key=normalized_key,
-        key=key
-    ).first()
+    tag = db.query(NodeTag).filter_by(node_public_key=normalized_key, key=key).first()
 
     if not tag:
         raise HTTPException(
@@ -257,11 +257,7 @@ async def set_node_tag(
     ensure_node_exists(db, normalized_key)
 
     # Create TagValueRequest with key from URL
-    tag_request = TagValueRequest(
-        key=key,
-        value_type=tag_value.value_type,
-        value=tag_value.value
-    )
+    tag_request = TagValueRequest(key=key, value_type=tag_value.value_type, value=tag_value.value)
 
     # Create or update tag
     tag = create_or_update_tag(db, normalized_key, tag_request)
@@ -320,7 +316,7 @@ async def bulk_update_tags(
             success=True,
             message=f"Successfully updated {len(tag_responses)} tags",
             updated_count=len(tag_responses),
-            tags=tag_responses
+            tags=tag_responses,
         )
     except HTTPException:
         db.rollback()
@@ -329,7 +325,7 @@ async def bulk_update_tags(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update tags: {str(e)}"
+            detail=f"Failed to update tags: {str(e)}",
         )
 
 
@@ -359,10 +355,7 @@ async def delete_node_tag(
     normalized_key = validate_full_public_key(public_key)
 
     # Query tag
-    tag = db.query(NodeTag).filter_by(
-        node_public_key=normalized_key,
-        key=key
-    ).first()
+    tag = db.query(NodeTag).filter_by(node_public_key=normalized_key, key=key).first()
 
     if not tag:
         raise HTTPException(
@@ -385,7 +378,12 @@ async def delete_node_tag(
 async def query_tags(
     key: Optional[str] = Query(None, description="Filter by tag key"),
     value_type: Optional[str] = Query(None, description="Filter by value type"),
-    node_public_key: Optional[str] = Query(None, min_length=64, max_length=64, description="Filter by node public key (full 64 hex characters)"),
+    node_public_key: Optional[str] = Query(
+        None,
+        min_length=64,
+        max_length=64,
+        description="Filter by node public key (full 64 hex characters)",
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of tags to return"),
     offset: int = Query(0, ge=0, description="Number of tags to skip"),
     db: Session = Depends(get_db),
@@ -416,6 +414,7 @@ async def query_tags(
     if node_public_key:
         # Validate and normalize the full public key
         from ...utils.address import validate_public_key
+
         try:
             normalized_key = normalize_public_key(node_public_key)
             if not validate_public_key(normalized_key, allow_prefix=False):
@@ -436,12 +435,7 @@ async def query_tags(
     # Convert to response models
     tag_responses = [db_model_to_response(tag) for tag in tags]
 
-    return NodeTagListResponse(
-        tags=tag_responses,
-        total=total,
-        limit=limit,
-        offset=offset
-    )
+    return NodeTagListResponse(tags=tag_responses, total=total, limit=limit, offset=offset)
 
 
 @router.get(
@@ -466,44 +460,33 @@ async def get_tag_keys(
     keys = db.query(NodeTag.key).distinct().order_by(NodeTag.key).all()
     key_list = [key[0] for key in keys]
 
-    return TagKeysResponse(
-        keys=key_list,
-        total=len(key_list)
-    )
+    return TagKeysResponse(keys=key_list, total=len(key_list))
 
 
 # Helper functions for querying nodes by tags
 
+
 def _apply_tag_value_filter(query, tag_value: str):
     """Apply tag value filter with smart type coercion."""
     # Try boolean
-    if tag_value.lower() in ('true', 'false'):
-        bool_value = tag_value.lower() == 'true'
-        return query.filter(
-            NodeTag.value_type == 'boolean',
-            NodeTag.value_boolean == bool_value
-        )
+    if tag_value.lower() in ("true", "false"):
+        bool_value = tag_value.lower() == "true"
+        return query.filter(NodeTag.value_type == "boolean", NodeTag.value_boolean == bool_value)
 
     # Try number
     try:
         num_value = float(tag_value)
-        return query.filter(
-            NodeTag.value_type == 'number',
-            NodeTag.value_number == num_value
-        )
+        return query.filter(NodeTag.value_type == "number", NodeTag.value_number == num_value)
     except ValueError:
         pass
 
     # Default to string
-    return query.filter(
-        NodeTag.value_type == 'string',
-        NodeTag.value_string == tag_value
-    )
+    return query.filter(NodeTag.value_type == "string", NodeTag.value_string == tag_value)
 
 
 def _apply_node_sorting(query, sort_by: str, order: str):
     """Apply sorting to node query."""
-    from sqlalchemy import desc, asc
+    from sqlalchemy import asc, desc
 
     sort_field = Node.last_seen
     if sort_by == "first_seen":
@@ -527,7 +510,9 @@ async def query_nodes_by_tag(
     tag_value: str = Query(..., description="Tag value to match (or 'EXISTS' for any value)"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of nodes to return"),
     offset: int = Query(0, ge=0, description="Number of nodes to skip"),
-    sort_by: str = Query("last_seen", description="Field to sort by (last_seen, first_seen, public_key)"),
+    sort_by: str = Query(
+        "last_seen", description="Field to sort by (last_seen, first_seen, public_key)"
+    ),
     order: str = Query("desc", description="Sort order (asc, desc)"),
     db: Session = Depends(get_db),
 ) -> NodeListResponse:
@@ -547,9 +532,11 @@ async def query_nodes_by_tag(
         Paginated list of nodes matching the tag criteria
     """
     # Build base query with join
-    query = db.query(Node).join(
-        NodeTag, Node.public_key == NodeTag.node_public_key
-    ).filter(NodeTag.key == tag_key)
+    query = (
+        db.query(Node)
+        .join(NodeTag, Node.public_key == NodeTag.node_public_key)
+        .filter(NodeTag.key == tag_key)
+    )
 
     # Apply value filter (with type coercion)
     if tag_value.upper() != "EXISTS":
@@ -564,9 +551,4 @@ async def query_nodes_by_tag(
     # Apply pagination
     nodes = query.limit(limit).offset(offset).all()
 
-    return NodeListResponse(
-        nodes=nodes,
-        total=total,
-        limit=limit,
-        offset=offset
-    )
+    return NodeListResponse(nodes=nodes, total=total, limit=limit, offset=offset)

@@ -1,14 +1,21 @@
 """Node management and querying endpoints."""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import desc, asc
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db
-from ..schemas import NodeResponse, NodeListResponse, MessageListResponse, TelemetryListResponse, CoordinateValue
-from ...database.models import Node, Message, Telemetry, NodeTag
+from ...database.models import Message, Node, NodeTag, Telemetry
 from ...utils.address import normalize_public_key, validate_public_key
+from ..dependencies import get_db
+from ..schemas import (
+    CoordinateValue,
+    MessageListResponse,
+    NodeListResponse,
+    NodeResponse,
+    TelemetryListResponse,
+)
 
 router = APIRouter()
 
@@ -28,17 +35,14 @@ def get_node_tags_dict(node_public_key: str, db: Session) -> dict:
 
     result = {}
     for tag in tags:
-        if tag.value_type == 'string':
+        if tag.value_type == "string":
             result[tag.key] = tag.value_string
-        elif tag.value_type == 'number':
+        elif tag.value_type == "number":
             result[tag.key] = tag.value_number
-        elif tag.value_type == 'boolean':
+        elif tag.value_type == "boolean":
             result[tag.key] = tag.value_boolean
-        elif tag.value_type == 'coordinate':
-            result[tag.key] = {
-                "latitude": tag.latitude,
-                "longitude": tag.longitude
-            }
+        elif tag.value_type == "coordinate":
+            result[tag.key] = {"latitude": tag.latitude, "longitude": tag.longitude}
 
     return result
 
@@ -89,7 +93,9 @@ def validate_full_public_key(public_key: str) -> str:
 async def list_nodes(
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of nodes to return"),
     offset: int = Query(0, ge=0, description="Number of nodes to skip"),
-    sort_by: str = Query("last_seen", description="Field to sort by (last_seen, first_seen, public_key)"),
+    sort_by: str = Query(
+        "last_seen", description="Field to sort by (last_seen, first_seen, public_key)"
+    ),
     order: str = Query("desc", description="Sort order (asc, desc)"),
     db: Session = Depends(get_db),
 ) -> NodeListResponse:
@@ -138,7 +144,7 @@ async def list_nodes(
             "last_seen": node.last_seen,
             "first_seen": node.first_seen,
             "created_at": node.created_at,
-            "tags": get_node_tags_dict(node.public_key, db)
+            "tags": get_node_tags_dict(node.public_key, db),
         }
         node_responses.append(NodeResponse(**node_dict))
 
@@ -202,7 +208,7 @@ async def search_nodes_by_prefix(
             "last_seen": node.last_seen,
             "first_seen": node.first_seen,
             "created_at": node.created_at,
-            "tags": get_node_tags_dict(node.public_key, db)
+            "tags": get_node_tags_dict(node.public_key, db),
         }
         node_responses.append(NodeResponse(**node_dict))
 
@@ -272,7 +278,9 @@ async def get_node_messages(
 )
 async def get_node_telemetry(
     public_key: str,
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of telemetry records to return"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of telemetry records to return"
+    ),
     offset: int = Query(0, ge=0, description="Number of telemetry records to skip"),
     db: Session = Depends(get_db),
 ) -> TelemetryListResponse:
@@ -295,9 +303,11 @@ async def get_node_telemetry(
     normalized_key = validate_full_public_key(public_key)
 
     # Query telemetry
-    query = db.query(Telemetry).filter(
-        Telemetry.node_public_key == normalized_key
-    ).order_by(desc(Telemetry.received_at))
+    query = (
+        db.query(Telemetry)
+        .filter(Telemetry.node_public_key == normalized_key)
+        .order_by(desc(Telemetry.received_at))
+    )
 
     total = query.count()
     telemetry = query.limit(limit).offset(offset).all()

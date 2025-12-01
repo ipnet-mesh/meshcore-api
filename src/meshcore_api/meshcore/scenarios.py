@@ -24,7 +24,7 @@ def process_dynamic_values(data: Dict[str, Any]) -> Dict[str, Any]:
         Processed dictionary with placeholders replaced
     """
     result = {}
-    counter = getattr(process_dynamic_values, '_counter', 0)
+    counter = getattr(process_dynamic_values, "_counter", 0)
 
     for key, value in data.items():
         if isinstance(value, str):
@@ -45,8 +45,7 @@ def process_dynamic_values(data: Dict[str, Any]) -> Dict[str, Any]:
             result[key] = process_dynamic_values(value)
         elif isinstance(value, list):
             result[key] = [
-                process_dynamic_values(item) if isinstance(item, dict) else item
-                for item in value
+                process_dynamic_values(item) if isinstance(item, dict) else item for item in value
             ]
         else:
             result[key] = value
@@ -69,7 +68,7 @@ SCENARIOS = {
                     "latitude": 45.5231,
                     "longitude": -122.6765,
                     "flags": 0,
-                }
+                },
             },
             {
                 "delay": 2.0,
@@ -81,7 +80,7 @@ SCENARIOS = {
                     "latitude": 45.5345,
                     "longitude": -122.6543,
                     "flags": 0,
-                }
+                },
             },
             {
                 "delay": 5.0,
@@ -92,16 +91,16 @@ SCENARIOS = {
                     "txt_type": 0,
                     "text": "Hello Bob!",
                     "SNR": 15.5,
-                    "sender_timestamp": "{{now}}"
-                }
+                    "sender_timestamp": "{{now}}",
+                },
             },
             {
                 "delay": 8.0,
                 "type": "SEND_CONFIRMED",
                 "data": {
                     "destination_public_key": "01ab2186c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1",
-                    "round_trip_ms": 2500
-                }
+                    "round_trip_ms": 2500,
+                },
             },
             {
                 "delay": 10.0,
@@ -112,12 +111,11 @@ SCENARIOS = {
                     "txt_type": 0,
                     "text": "Hi Alice! How are you?",
                     "SNR": 14.8,
-                    "sender_timestamp": "{{now}}"
-                }
-            }
-        ]
+                    "sender_timestamp": "{{now}}",
+                },
+            },
+        ],
     },
-
     "trace_path_test": {
         "description": "Trace path through multi-hop network",
         "events": [
@@ -130,7 +128,7 @@ SCENARIOS = {
                     "adv_type": "chat",
                     "latitude": 45.5231,
                     "longitude": -122.6765,
-                }
+                },
             },
             {
                 "delay": 1.0,
@@ -141,7 +139,7 @@ SCENARIOS = {
                     "adv_type": "repeater",
                     "latitude": 45.5345,
                     "longitude": -122.6543,
-                }
+                },
             },
             {
                 "delay": 2.0,
@@ -152,7 +150,7 @@ SCENARIOS = {
                     "adv_type": "chat",
                     "latitude": 45.5456,
                     "longitude": -122.6321,
-                }
+                },
             },
             {
                 "delay": 5.0,
@@ -163,11 +161,10 @@ SCENARIOS = {
                     "path_hashes": ["b3", "fa"],
                     "snr_values": [48.0, 45.2],
                     "hop_count": 2,
-                }
-            }
-        ]
+                },
+            },
+        ],
     },
-
     "telemetry_collection": {
         "description": "Periodic telemetry from sensor nodes",
         "events": [
@@ -180,90 +177,84 @@ SCENARIOS = {
                     "adv_type": "chat",
                     "latitude": 45.5231,
                     "longitude": -122.6765,
-                }
+                },
             },
             {
                 "delay": 5.0,
                 "type": "TELEMETRY_RESPONSE",
                 "data": {
                     "node_public_key": "sensor01aabb",
-                    "parsed_data": {
-                        "temperature": 22.5,
-                        "humidity": 65,
-                        "battery": 3.8
-                    }
-                }
+                    "parsed_data": {"temperature": 22.5, "humidity": 65, "battery": 3.8},
+                },
             },
             {
                 "delay": 10.0,
                 "type": "TELEMETRY_RESPONSE",
                 "data": {
                     "node_public_key": "sensor01aabb",
-                    "parsed_data": {
-                        "temperature": 23.1,
-                        "humidity": 63,
-                        "battery": 3.75
-                    }
-                }
+                    "parsed_data": {"temperature": 23.1, "humidity": 63, "battery": 3.75},
+                },
             },
             {
                 "delay": 15.0,
                 "type": "TELEMETRY_RESPONSE",
                 "data": {
                     "node_public_key": "sensor01aabb",
-                    "parsed_data": {
-                        "temperature": 23.8,
-                        "humidity": 61,
-                        "battery": 3.72
-                    }
-                }
-            }
-        ]
+                    "parsed_data": {"temperature": 23.8, "humidity": 61, "battery": 3.72},
+                },
+            },
+        ],
     },
-
     "network_stress": {
         "description": "High-traffic scenario with many nodes",
         "events": [
             # 10 nodes advertising
-            *[{
-                "delay": i * 0.5,
-                "type": "ADVERTISEMENT",
-                "data": {
-                    "public_key": f"node{i:02d}{'ab' * 30}",
-                    "name": f"Node{i:02d}",
-                    "adv_type": "chat",
-                    "latitude": 45.52 + (i * 0.01),
-                    "longitude": -122.67 + (i * 0.01),
+            *[
+                {
+                    "delay": i * 0.5,
+                    "type": "ADVERTISEMENT",
+                    "data": {
+                        "public_key": f"node{i:02d}{'ab' * 30}",
+                        "name": f"Node{i:02d}",
+                        "adv_type": "chat",
+                        "latitude": 45.52 + (i * 0.01),
+                        "longitude": -122.67 + (i * 0.01),
+                    },
                 }
-            } for i in range(10)],
-
+                for i in range(10)
+            ],
             # Flood of channel messages
-            *[{
-                "delay": 10.0 + i * 1.0,
-                "type": "CHANNEL_MSG_RECV",
-                "data": {
-                    "channel_idx": i % 3,
-                    "path_len": 0,
-                    "txt_type": 0,
-                    "text": f"Channel message {i}",
-                    "SNR": "{{random_snr}}",
-                    "sender_timestamp": "{{now}}"
+            *[
+                {
+                    "delay": 10.0 + i * 1.0,
+                    "type": "CHANNEL_MSG_RECV",
+                    "data": {
+                        "channel_idx": i % 3,
+                        "path_len": 0,
+                        "txt_type": 0,
+                        "text": f"Channel message {i}",
+                        "SNR": "{{random_snr}}",
+                        "sender_timestamp": "{{now}}",
+                    },
                 }
-            } for i in range(20)]
-        ]
+                for i in range(20)
+            ],
+        ],
     },
-
     "battery_drain": {
         "description": "Simulated battery drain over time",
         "events": [
-            *[{
-                "delay": i * 10.0,
-                "type": "BATTERY",
-                "data": {
-                    "battery_voltage": max(3.0, 4.2 - (i * 0.05)),
-                    "battery_percentage": max(0, 100 - (i * 5)),
+            *[
+                {
+                    "delay": i * 10.0,
+                    "type": "BATTERY",
+                    "data": {
+                        "battery_voltage": max(3.0, 4.2 - (i * 0.05)),
+                        "battery_percentage": max(0, 100 - (i * 5)),
+                    },
                 }
-            } for i in range(20)]
-        ]
-    }
+                for i in range(20)
+            ]
+        ],
+    },
 }

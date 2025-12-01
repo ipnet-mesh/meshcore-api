@@ -2,9 +2,11 @@
 
 import logging
 from datetime import datetime, timedelta
+
 from sqlalchemy import delete
-from .models import Message, Advertisement, Telemetry, TracePath, EventLog
+
 from .engine import session_scope
+from .models import Advertisement, EventLog, Message, Telemetry, TracePath
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +37,7 @@ class DataCleanup:
 
         with session_scope() as session:
             # Cleanup messages
-            result = session.execute(
-                delete(Message).where(Message.received_at < cutoff_date)
-            )
+            result = session.execute(delete(Message).where(Message.received_at < cutoff_date))
             deleted_counts["messages"] = result.rowcount
 
             # Cleanup advertisements
@@ -47,21 +47,15 @@ class DataCleanup:
             deleted_counts["advertisements"] = result.rowcount
 
             # Cleanup telemetry
-            result = session.execute(
-                delete(Telemetry).where(Telemetry.received_at < cutoff_date)
-            )
+            result = session.execute(delete(Telemetry).where(Telemetry.received_at < cutoff_date))
             deleted_counts["telemetry"] = result.rowcount
 
             # Cleanup trace paths
-            result = session.execute(
-                delete(TracePath).where(TracePath.completed_at < cutoff_date)
-            )
+            result = session.execute(delete(TracePath).where(TracePath.completed_at < cutoff_date))
             deleted_counts["trace_paths"] = result.rowcount
 
             # Cleanup event log
-            result = session.execute(
-                delete(EventLog).where(EventLog.created_at < cutoff_date)
-            )
+            result = session.execute(delete(EventLog).where(EventLog.created_at < cutoff_date))
             deleted_counts["events_log"] = result.rowcount
 
         total_deleted = sum(deleted_counts.values())

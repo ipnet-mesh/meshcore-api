@@ -201,7 +201,9 @@ class TestWebhookHandlerSendWebhook:
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError("Server Error", request=MagicMock(), response=mock_response)
+            side_effect=httpx.HTTPStatusError(
+                "Server Error", request=MagicMock(), response=mock_response
+            )
         )
 
         with patch.object(handler.client, "post", new_callable=AsyncMock) as mock_post:
@@ -233,7 +235,9 @@ class TestWebhookHandlerSendWebhook:
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError("Server Error", request=MagicMock(), response=mock_response)
+            side_effect=httpx.HTTPStatusError(
+                "Server Error", request=MagicMock(), response=mock_response
+            )
         )
 
         with patch.object(handler.client, "post", new_callable=AsyncMock) as mock_post:

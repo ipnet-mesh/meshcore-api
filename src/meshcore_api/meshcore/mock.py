@@ -6,7 +6,8 @@ import random
 import time
 from datetime import datetime
 from typing import Callable, List, Optional
-from .interface import MeshCoreInterface, Event, Contact
+
+from .interface import Contact, Event, MeshCoreInterface
 from .scenarios import SCENARIOS, process_dynamic_values
 
 logger = logging.getLogger(__name__)
@@ -97,10 +98,7 @@ class MockMeshCore(MeshCoreInterface):
         now = datetime.utcnow()
         timestamp = int(now.timestamp())
         logger.info(f"Mock: Syncing clock to {now.isoformat()}Z")
-        return Event(
-            type="CLOCK_SYNCED",
-            payload={"timestamp": timestamp}
-        )
+        return Event(type="CLOCK_SYNCED", payload={"timestamp": timestamp})
 
     def _resolve_destination(self, destination: str) -> str:
         """
@@ -119,7 +117,7 @@ class MockMeshCore(MeshCoreInterface):
             raise ValueError("Destination cannot be empty")
 
         # If destination looks like a full key (64 hex chars), return as-is
-        if len(destination) == 64 and all(c in '0123456789abcdefABCDEF' for c in destination):
+        if len(destination) == 64 and all(c in "0123456789abcdefABCDEF" for c in destination):
             return destination.lower()
 
         # Require at least 2 characters for prefix matching
@@ -129,7 +127,8 @@ class MockMeshCore(MeshCoreInterface):
         # Find matching nodes by prefix
         destination_lower = destination.lower()
         matching_nodes = [
-            node for node in self._simulated_nodes
+            node
+            for node in self._simulated_nodes
             if node["public_key"].lower().startswith(destination_lower)
         ]
 
@@ -146,10 +145,26 @@ class MockMeshCore(MeshCoreInterface):
     def _generate_simulated_nodes(self) -> None:
         """Generate simulated node data."""
         node_names = [
-            "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank",
-            "Grace", "Henry", "Ivy", "Jack", "Kate", "Leo",
-            "Repeater-01", "Repeater-02", "Gateway-01", "Sensor-01",
-            "Sensor-02", "Mobile-01", "Mobile-02", "Base-Station"
+            "Alice",
+            "Bob",
+            "Charlie",
+            "Diana",
+            "Eve",
+            "Frank",
+            "Grace",
+            "Henry",
+            "Ivy",
+            "Jack",
+            "Kate",
+            "Leo",
+            "Repeater-01",
+            "Repeater-02",
+            "Gateway-01",
+            "Sensor-01",
+            "Sensor-02",
+            "Mobile-01",
+            "Mobile-02",
+            "Base-Station",
         ]
 
         node_types = ["chat", "repeater", "room", "none"]
@@ -243,15 +258,22 @@ class MockMeshCore(MeshCoreInterface):
                     "latitude": node["latitude"],
                     "longitude": node["longitude"],
                     "flags": random.randint(0, 255),
-                }
+                },
             )
 
         elif event_type == "CONTACT_MSG_RECV":
             from_node = node
             messages = [
-                "Hello!", "How are you?", "Testing 123", "Roger that",
-                "Message received", "All good here", "Check",
-                "Standing by", "Copy that", "Acknowledged"
+                "Hello!",
+                "How are you?",
+                "Testing 123",
+                "Roger that",
+                "Message received",
+                "All good here",
+                "Check",
+                "Standing by",
+                "Copy that",
+                "Acknowledged",
             ]
             txt_type = random.choice([0, 0, 0, 2])  # mostly plain, sometimes signed
             signature = "".join(random.choices("0123456789abcdef", k=8)) if txt_type == 2 else None
@@ -265,14 +287,19 @@ class MockMeshCore(MeshCoreInterface):
                     "text": random.choice(messages),
                     "SNR": random.uniform(-5, 30),
                     "sender_timestamp": int(datetime.utcnow().timestamp()),
-                }
+                },
             )
 
         elif event_type == "CHANNEL_MSG_RECV":
             messages = [
-                "Hello everyone!", "Anyone online?", "Network test",
-                "All stations check in", "Repeater operational",
-                "Good morning", "Weather update", "Checking coverage"
+                "Hello everyone!",
+                "Anyone online?",
+                "Network test",
+                "All stations check in",
+                "Repeater operational",
+                "Good morning",
+                "Weather update",
+                "Checking coverage",
             ]
             return Event(
                 type="CHANNEL_MSG_RECV",
@@ -283,7 +310,7 @@ class MockMeshCore(MeshCoreInterface):
                     "text": random.choice(messages),
                     "SNR": random.uniform(-5, 30),
                     "sender_timestamp": int(datetime.utcnow().timestamp()),
-                }
+                },
             )
 
         elif event_type == "PATH_UPDATED":
@@ -293,7 +320,7 @@ class MockMeshCore(MeshCoreInterface):
                 payload={
                     "node_public_key": node["public_key"],
                     "hop_count": hop_count,
-                }
+                },
             )
 
         elif event_type == "SEND_CONFIRMED":
@@ -302,7 +329,7 @@ class MockMeshCore(MeshCoreInterface):
                 payload={
                     "destination_public_key": node["public_key"],
                     "round_trip_ms": random.randint(500, 10000),
-                }
+                },
             )
 
         elif event_type == "TELEMETRY_RESPONSE":
@@ -314,8 +341,8 @@ class MockMeshCore(MeshCoreInterface):
                         "temperature": random.uniform(15, 35),
                         "humidity": random.randint(30, 80),
                         "battery": random.uniform(3.0, 4.2),
-                    }
-                }
+                    },
+                },
             )
 
         elif event_type == "TRACE_DATA":
@@ -330,7 +357,7 @@ class MockMeshCore(MeshCoreInterface):
                     "path_hashes": path_hashes,
                     "snr_values": snr_values,
                     "hop_count": hop_count,
-                }
+                },
             )
 
         elif event_type == "BATTERY":
@@ -339,7 +366,7 @@ class MockMeshCore(MeshCoreInterface):
                 payload={
                     "battery_voltage": random.uniform(3.2, 4.2),
                     "battery_percentage": random.randint(20, 100),
-                }
+                },
             )
 
         elif event_type == "STATUS_RESPONSE":
@@ -350,8 +377,8 @@ class MockMeshCore(MeshCoreInterface):
                     "status_data": {
                         "uptime": random.randint(0, 86400),
                         "messages": random.randint(0, 1000),
-                    }
-                }
+                    },
+                },
             )
 
         return Event(type="UNKNOWN", payload={})
@@ -407,7 +434,7 @@ class MockMeshCore(MeshCoreInterface):
                 "destination": resolved_dest,
                 "text": text,
                 "estimated_delivery_ms": random.randint(1000, 5000),
-            }
+            },
         )
 
     async def send_channel_message(self, text: str, flood: bool = True) -> Event:
@@ -420,16 +447,13 @@ class MockMeshCore(MeshCoreInterface):
                 "message_id": self._message_counter,
                 "text": text,
                 "flood": flood,
-            }
+            },
         )
 
     async def send_advert(self, flood: bool = True) -> Event:
         """Send advertisement (mock)."""
         logger.info("Mock: Sending advertisement")
-        return Event(
-            type="ADVERT_SENT",
-            payload={"flood": flood}
-        )
+        return Event(type="ADVERT_SENT", payload={"flood": flood})
 
     async def send_trace_path(self, destination: str) -> Event:
         """Send trace path request (mock)."""
@@ -447,7 +471,7 @@ class MockMeshCore(MeshCoreInterface):
             payload={
                 "destination": resolved_dest,
                 "initiator_tag": tag,
-            }
+            },
         )
 
     async def ping(self, destination: str) -> Event:
@@ -460,10 +484,7 @@ class MockMeshCore(MeshCoreInterface):
             return Event(type="ERROR", payload={"error": str(e)})
 
         logger.info(f"Mock: Pinging {resolved_dest[:8]}...")
-        return Event(
-            type="PING_SENT",
-            payload={"destination": resolved_dest}
-        )
+        return Event(type="PING_SENT", payload={"destination": resolved_dest})
 
     async def send_telemetry_request(self, destination: str) -> Event:
         """Request telemetry (mock)."""
@@ -475,10 +496,7 @@ class MockMeshCore(MeshCoreInterface):
             return Event(type="ERROR", payload={"error": str(e)})
 
         logger.info(f"Mock: Requesting telemetry from {resolved_dest[:8]}...")
-        return Event(
-            type="TELEMETRY_REQUEST_SENT",
-            payload={"destination": resolved_dest}
-        )
+        return Event(type="TELEMETRY_REQUEST_SENT", payload={"destination": resolved_dest})
 
     async def get_device_info(self) -> Event:
         """Get device info (mock)."""
@@ -486,8 +504,8 @@ class MockMeshCore(MeshCoreInterface):
             type="DEVICE_INFO",
             payload={
                 "firmware_version": "1.21.0-mock",
-                "capabilities": {"ble": True, "gps": True, "lora": True}
-            }
+                "capabilities": {"ble": True, "gps": True, "lora": True},
+            },
         )
 
     async def get_battery(self) -> Event:
@@ -497,7 +515,7 @@ class MockMeshCore(MeshCoreInterface):
             payload={
                 "battery_voltage": random.uniform(3.5, 4.2),
                 "battery_percentage": random.randint(50, 100),
-            }
+            },
         )
 
     async def get_contacts(self) -> List[Contact]:

@@ -2,15 +2,16 @@
 
 from datetime import datetime
 from typing import List, Optional
+
 from sqlalchemy import (
     Boolean,
-    Integer,
-    String,
-    Float,
-    Text,
-    LargeBinary,
     DateTime,
+    Float,
     Index,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
     func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -18,6 +19,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
+
     pass
 
 
@@ -43,17 +45,11 @@ class Node(Base):
         prefix_len = len(prefix_lower)
 
         if prefix_len <= 2:
-            return session.query(cls).filter(
-                cls.public_key_prefix_2.like(f"{prefix_lower}%")
-            ).all()
+            return session.query(cls).filter(cls.public_key_prefix_2.like(f"{prefix_lower}%")).all()
         elif prefix_len <= 8:
-            return session.query(cls).filter(
-                cls.public_key_prefix_8.like(f"{prefix_lower}%")
-            ).all()
+            return session.query(cls).filter(cls.public_key_prefix_8.like(f"{prefix_lower}%")).all()
         else:
-            return session.query(cls).filter(
-                cls.public_key.like(f"{prefix_lower}%")
-            ).all()
+            return session.query(cls).filter(cls.public_key.like(f"{prefix_lower}%")).all()
 
 
 class NodeTag(Base):
@@ -64,7 +60,9 @@ class NodeTag(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     node_public_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     key: Mapped[str] = mapped_column(String(128), nullable=False)
-    value_type: Mapped[str] = mapped_column(String(16), nullable=False)  # string/number/boolean/coordinate
+    value_type: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )  # string/number/boolean/coordinate
     value_string: Mapped[Optional[str]] = mapped_column(String(512))
     value_number: Mapped[Optional[float]] = mapped_column(Float)
     value_boolean: Mapped[Optional[bool]] = mapped_column(Boolean)
@@ -98,9 +96,7 @@ class Message(Base):
     sender_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     received_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
-    __table_args__ = (
-        Index("idx_messages_sender_timestamp", "sender_timestamp"),
-    )
+    __table_args__ = (Index("idx_messages_sender_timestamp", "sender_timestamp"),)
 
 
 class Advertisement(Base):

@@ -1,22 +1,24 @@
 """Event handler for processing and persisting MeshCore events."""
+
 import asyncio
 import base64
 import json
 import logging
 from datetime import datetime
-from typing import Optional, List
-from ..meshcore.interface import Event, MeshCoreInterface, Contact
-from ..database.models import (
-    Node,
-    Message,
-    Advertisement,
-    TracePath,
-    Telemetry,
-    EventLog,
-)
-from ..database.engine import session_scope
-from ..utils.address import normalize_public_key, extract_prefix
+from typing import List, Optional
+
 from ..constants import NODE_TYPE_MAP, node_type_name
+from ..database.engine import session_scope
+from ..database.models import (
+    Advertisement,
+    EventLog,
+    Message,
+    Node,
+    Telemetry,
+    TracePath,
+)
+from ..meshcore.interface import Contact, Event, MeshCoreInterface
+from ..utils.address import extract_prefix, normalize_public_key
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class EventHandler:
     def __init__(
         self,
         meshcore: Optional[MeshCoreInterface] = None,
-        webhook_handler: Optional['WebhookHandler'] = None,
+        webhook_handler: Optional["WebhookHandler"] = None,
     ):
         """Initialize event handler."""
         self.event_count = 0
@@ -134,7 +136,11 @@ class EventHandler:
             return []
         try:
             if self._contact_fetch_inflight:
-                cache = getattr(self.meshcore, "contacts", {}) if hasattr(self.meshcore, "contacts") else {}
+                cache = (
+                    getattr(self.meshcore, "contacts", {})
+                    if hasattr(self.meshcore, "contacts")
+                    else {}
+                )
                 return self._contacts_from_cache(cache)
 
             if hasattr(self.meshcore, "contacts"):
@@ -201,12 +207,16 @@ class EventHandler:
             contact = Contact(
                 public_key=pub_key,
                 name=mc_contact.get("adv_name") or mc_contact.get("name"),
-                node_type=mc_contact.get("node_type") or mc_contact.get("type") or mc_contact.get("adv_type"),
+                node_type=mc_contact.get("node_type")
+                or mc_contact.get("type")
+                or mc_contact.get("adv_type"),
             )
             contacts.append(contact)
         return contacts
 
-    def _should_update_name(self, current: Optional[str], new: Optional[str], normalized_key: str) -> bool:
+    def _should_update_name(
+        self, current: Optional[str], new: Optional[str], normalized_key: str
+    ) -> bool:
         """Decide if the stored node name should be replaced."""
         if not new:
             return False
@@ -254,12 +264,18 @@ class EventHandler:
                     # Update existing node
                     for key, value in kwargs.items():
                         if value is not None:
-                            if key == "name" and not self._should_update_name(getattr(node, key), value, normalized_key):
-                                logger.debug(f"Skipping name update for {normalized_key[:8]}...: '{getattr(node, key)}' -> '{value}'")
+                            if key == "name" and not self._should_update_name(
+                                getattr(node, key), value, normalized_key
+                            ):
+                                logger.debug(
+                                    f"Skipping name update for {normalized_key[:8]}...: '{getattr(node, key)}' -> '{value}'"
+                                )
                                 continue
                             old_value = getattr(node, key, None)
                             if old_value != value:
-                                logger.info(f"Updating {key} for {normalized_key[:8]}...: {old_value} -> {value}")
+                                logger.info(
+                                    f"Updating {key} for {normalized_key[:8]}...: {old_value} -> {value}"
+                                )
                             setattr(node, key, value)
                     node.last_seen = datetime.utcnow()
                 else:
@@ -269,7 +285,7 @@ class EventHandler:
                         public_key_prefix_2=extract_prefix(normalized_key, 2),
                         public_key_prefix_8=extract_prefix(normalized_key, 8),
                         last_seen=datetime.utcnow(),
-                        **kwargs
+                        **kwargs,
                     )
                     session.add(node)
 
@@ -383,7 +399,9 @@ class EventHandler:
 
         path_hashes = payload.get("path_hashes")
         if path_hashes is None and "path" in payload:
-            path_hashes = [hop.get("hash") for hop in payload.get("path", []) if hop.get("hash") is not None]
+            path_hashes = [
+                hop.get("hash") for hop in payload.get("path", []) if hop.get("hash") is not None
+            ]
 
         # Normalize path hashes to lowercase for consistency
         if path_hashes:
@@ -391,13 +409,19 @@ class EventHandler:
 
         snr_values = payload.get("snr_values")
         if snr_values is None and "path" in payload:
-            snr_values = [hop.get("snr") for hop in payload.get("path", []) if hop.get("snr") is not None]
+            snr_values = [
+                hop.get("snr") for hop in payload.get("path", []) if hop.get("snr") is not None
+            ]
 
         path_len = payload.get("path_len")
         if path_len is None and path_hashes is not None:
             path_len = len(path_hashes)
 
-        hop_count = payload.get("hop_count") or path_len or (len(path_hashes) if path_hashes is not None else None)
+        hop_count = (
+            payload.get("hop_count")
+            or path_len
+            or (len(path_hashes) if path_hashes is not None else None)
+        )
 
         with session_scope() as session:
             trace = TracePath(
@@ -425,7 +449,9 @@ class EventHandler:
             telemetry = Telemetry(
                 node_public_key=normalized_key,
                 lpp_data=payload.get("lpp_data"),
-                parsed_data=json.dumps(payload.get("parsed_data")) if payload.get("parsed_data") else None,
+                parsed_data=(
+                    json.dumps(payload.get("parsed_data")) if payload.get("parsed_data") else None
+                ),
             )
             session.add(telemetry)
 
@@ -444,7 +470,7 @@ class EventHandler:
 
         try:
             # Remove 'Z' suffix if present
-            if timestamp_str.endswith('Z'):
+            if timestamp_str.endswith("Z"):
                 timestamp_str = timestamp_str[:-1]
 
             return datetime.fromisoformat(timestamp_str)

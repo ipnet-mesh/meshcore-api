@@ -3,10 +3,11 @@
 import logging
 import secrets
 from typing import Optional
+
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -76,7 +77,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={
                     "error": "Authentication required",
-                    "detail": "Missing Authorization header"
+                    "detail": "Missing Authorization header",
                 },
                 headers={"WWW-Authenticate": "Bearer"},
             )
@@ -89,7 +90,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={
                     "error": "Authentication required",
-                    "detail": "Invalid Authorization header format. Expected: 'Bearer <token>'"
+                    "detail": "Invalid Authorization header format. Expected: 'Bearer <token>'",
                 },
                 headers={"WWW-Authenticate": "Bearer"},
             )
@@ -101,10 +102,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
             logger.warning(f"Invalid bearer token for {request.url.path}")
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={
-                    "error": "Authentication required",
-                    "detail": "Invalid bearer token"
-                },
+                content={"error": "Authentication required", "detail": "Invalid bearer token"},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -276,9 +274,7 @@ Data is automatically cleaned up based on the configured retention period (defau
         )
 
     @app.exception_handler(Exception)
-    async def generic_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Handle unexpected exceptions."""
         logger.error(f"Unexpected error on {request.url}: {exc}", exc_info=True)
         return JSONResponse(
@@ -307,8 +303,16 @@ Data is automatically cleaned up based on the configured retention period (defau
     # Import and Include Routers
     # =========================================================================
 
-    from .routes import health, nodes, messages, advertisements
-    from .routes import telemetry, trace_paths, commands, tags
+    from .routes import (
+        advertisements,
+        commands,
+        health,
+        messages,
+        nodes,
+        tags,
+        telemetry,
+        trace_paths,
+    )
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
     app.include_router(tags.router, prefix="/api/v1", tags=["tags"])

@@ -1,15 +1,17 @@
 """
 Data models for the command queue system.
 """
+
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
-import uuid
 
 
 class CommandType(str, Enum):
     """Types of commands that can be queued."""
+
     SEND_MESSAGE = "send_message"
     SEND_CHANNEL_MESSAGE = "send_channel_message"
     SEND_ADVERT = "send_advert"
@@ -20,6 +22,7 @@ class CommandType(str, Enum):
 
 class QueueFullBehavior(str, Enum):
     """Behavior when the queue is full."""
+
     REJECT = "reject"  # Reject new commands with error
     DROP_OLDEST = "drop_oldest"  # Drop oldest command to make room
 

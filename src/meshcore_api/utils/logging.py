@@ -1,8 +1,8 @@
 """Logging configuration and setup."""
 
+import json
 import logging
 import sys
-import json
 from datetime import datetime
 from typing import Any, Dict
 
@@ -36,7 +36,7 @@ class TextFormatter(logging.Formatter):
     # ANSI color codes
     COLORS = {
         "DEBUG": "\033[36m",  # Cyan
-        "INFO": "\033[32m",   # Green
+        "INFO": "\033[32m",  # Green
         "WARNING": "\033[33m",  # Yellow
         "ERROR": "\033[31m",  # Red
         "CRITICAL": "\033[35m",  # Magenta
@@ -51,17 +51,14 @@ class TextFormatter(logging.Formatter):
             use_colors: Whether to use ANSI color codes
         """
         super().__init__(
-            fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
         self.use_colors = use_colors and sys.stderr.isatty()
 
     def format(self, record: logging.LogRecord) -> str:
         """Format log record with optional colors."""
         if self.use_colors and record.levelname in self.COLORS:
-            record.levelname = (
-                f"{self.COLORS[record.levelname]}{record.levelname}{self.RESET}"
-            )
+            record.levelname = f"{self.COLORS[record.levelname]}{record.levelname}{self.RESET}"
         return super().format(record)
 
 

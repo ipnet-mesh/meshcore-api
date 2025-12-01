@@ -2,12 +2,12 @@
 
 from .engine import DatabaseEngine, get_session
 from .models import (
-    Node,
-    Message,
     Advertisement,
-    TracePath,
-    Telemetry,
     EventLog,
+    Message,
+    Node,
+    Telemetry,
+    TracePath,
 )
 
 __all__ = [

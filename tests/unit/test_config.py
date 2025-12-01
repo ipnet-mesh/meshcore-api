@@ -55,7 +55,7 @@ class TestConfig:
             mock_nodes=20,
             api_port=9000,
             db_path="/tmp/test.db",
-            log_level="DEBUG"
+            log_level="DEBUG",
         )
 
         assert config.serial_port == "/dev/ttyACM0"
@@ -71,7 +71,7 @@ class TestConfig:
         config = Config(
             webhook_message_direct=webhook_url,
             webhook_message_channel=webhook_url,
-            webhook_advertisement=webhook_url
+            webhook_advertisement=webhook_url,
         )
 
         assert config.webhook_message_direct == webhook_url
@@ -87,7 +87,7 @@ class TestConfig:
             mock_min_interval=0.5,
             mock_max_interval=2.0,
             mock_center_lat=40.7128,
-            mock_center_lon=-74.0060
+            mock_center_lon=-74.0060,
         )
 
         assert config.mock_scenario == "test_scenario"
@@ -101,9 +101,7 @@ class TestConfig:
     def test_config_database_settings(self):
         """Test database configuration settings."""
         config = Config(
-            db_path="/custom/path/database.db",
-            retention_days=90,
-            cleanup_interval_hours=24
+            db_path="/custom/path/database.db", retention_days=90, cleanup_interval_hours=24
         )
 
         assert config.db_path == "/custom/path/database.db"
@@ -117,7 +115,7 @@ class TestConfig:
             api_port=8080,
             api_title="Custom API",
             api_version="2.0.0",
-            api_bearer_token="secret-token"
+            api_bearer_token="secret-token",
         )
 
         assert config.api_host == "127.0.0.1"
@@ -129,10 +127,7 @@ class TestConfig:
     def test_config_other_settings(self):
         """Test other configuration settings."""
         config = Config(
-            metrics_enabled=False,
-            enable_write=False,
-            log_level="ERROR",
-            log_format="text"
+            metrics_enabled=False, enable_write=False, log_level="ERROR", log_format="text"
         )
 
         assert config.metrics_enabled is False

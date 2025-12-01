@@ -1,13 +1,14 @@
 """Pydantic schemas for API request and response validation."""
 
 from datetime import datetime
-from typing import Optional, List, Literal, Union
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from typing import List, Literal, Optional, Union
 
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 # ============================================================================
 # Common/Shared Schemas
 # ============================================================================
+
 
 class PaginationParams(BaseModel):
     """Pagination parameters for list endpoints."""
@@ -26,6 +27,7 @@ class ErrorResponse(BaseModel):
 # ============================================================================
 # Node Schemas
 # ============================================================================
+
 
 class NodeResponse(BaseModel):
     """Response model for a single node."""
@@ -55,6 +57,7 @@ class NodeListResponse(BaseModel):
 # ============================================================================
 # Message Schemas
 # ============================================================================
+
 
 class MessageResponse(BaseModel):
     """Response model for a message."""
@@ -88,16 +91,30 @@ class MessageListResponse(BaseModel):
 class MessageFilters(BaseModel):
     """Query filters for messages."""
 
-    pubkey_prefix: Optional[str] = Field(None, min_length=2, max_length=12, description="Filter by sender pubkey prefix (contact messages)")
-    channel_idx: Optional[int] = Field(None, description="Filter by channel index (channel messages)")
-    message_type: Optional[str] = Field(None, description="Filter by message type (contact/channel)")
-    start_date: Optional[datetime] = Field(None, description="Filter messages after this sender_timestamp")
-    end_date: Optional[datetime] = Field(None, description="Filter messages before this sender_timestamp")
+    pubkey_prefix: Optional[str] = Field(
+        None,
+        min_length=2,
+        max_length=12,
+        description="Filter by sender pubkey prefix (contact messages)",
+    )
+    channel_idx: Optional[int] = Field(
+        None, description="Filter by channel index (channel messages)"
+    )
+    message_type: Optional[str] = Field(
+        None, description="Filter by message type (contact/channel)"
+    )
+    start_date: Optional[datetime] = Field(
+        None, description="Filter messages after this sender_timestamp"
+    )
+    end_date: Optional[datetime] = Field(
+        None, description="Filter messages before this sender_timestamp"
+    )
 
 
 # ============================================================================
 # Advertisement Schemas
 # ============================================================================
+
 
 class AdvertisementResponse(BaseModel):
     """Response model for an advertisement."""
@@ -125,15 +142,20 @@ class AdvertisementListResponse(BaseModel):
 class AdvertisementFilters(BaseModel):
     """Query filters for advertisements."""
 
-    node_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by node public key prefix")
+    node_prefix: Optional[str] = Field(
+        None, min_length=2, max_length=64, description="Filter by node public key prefix"
+    )
     adv_type: Optional[str] = Field(None, description="Filter by advertisement type")
-    start_date: Optional[datetime] = Field(None, description="Filter advertisements after this date")
+    start_date: Optional[datetime] = Field(
+        None, description="Filter advertisements after this date"
+    )
     end_date: Optional[datetime] = Field(None, description="Filter advertisements before this date")
 
 
 # ============================================================================
 # Trace Path Schemas
 # ============================================================================
+
 
 class TracePathResponse(BaseModel):
     """Response model for a trace path result."""
@@ -172,6 +194,7 @@ class TracePathFilters(BaseModel):
 # Telemetry Schemas
 # ============================================================================
 
+
 class TelemetryResponse(BaseModel):
     """Response model for telemetry data."""
 
@@ -196,7 +219,9 @@ class TelemetryListResponse(BaseModel):
 class TelemetryFilters(BaseModel):
     """Query filters for telemetry."""
 
-    node_prefix: Optional[str] = Field(None, min_length=2, max_length=64, description="Filter by node public key prefix")
+    node_prefix: Optional[str] = Field(
+        None, min_length=2, max_length=64, description="Filter by node public key prefix"
+    )
     start_date: Optional[datetime] = Field(None, description="Filter telemetry after this date")
     end_date: Optional[datetime] = Field(None, description="Filter telemetry before this date")
 
@@ -205,19 +230,22 @@ class TelemetryFilters(BaseModel):
 # Command Request Schemas
 # ============================================================================
 
+
 class SendMessageRequest(BaseModel):
     """Request to send a direct message."""
 
-    destination: str = Field(..., min_length=64, max_length=64, description="64-character destination public key")
+    destination: str = Field(
+        ..., min_length=64, max_length=64, description="64-character destination public key"
+    )
     text: str = Field(..., min_length=1, max_length=1000, description="Message text content")
     text_type: str = Field("plain", description="Text type (plain/cli_data/signed_plain)")
 
-    @field_validator('destination')
+    @field_validator("destination")
     @classmethod
     def validate_hex(cls, v: str) -> str:
         """Validate that destination is a valid hex string."""
-        if not all(c in '0123456789abcdefABCDEF' for c in v):
-            raise ValueError('Destination must be a valid hexadecimal string')
+        if not all(c in "0123456789abcdefABCDEF" for c in v):
+            raise ValueError("Destination must be a valid hexadecimal string")
         return v.lower()
 
 
@@ -237,48 +265,55 @@ class SendAdvertRequest(BaseModel):
 class SendTracePathRequest(BaseModel):
     """Request to initiate a trace path."""
 
-    destination: str = Field(..., min_length=64, max_length=64, description="64-character destination public key")
+    destination: str = Field(
+        ..., min_length=64, max_length=64, description="64-character destination public key"
+    )
 
-    @field_validator('destination')
+    @field_validator("destination")
     @classmethod
     def validate_hex(cls, v: str) -> str:
         """Validate that destination is a valid hex string."""
-        if not all(c in '0123456789abcdefABCDEF' for c in v):
-            raise ValueError('Destination must be a valid hexadecimal string')
+        if not all(c in "0123456789abcdefABCDEF" for c in v):
+            raise ValueError("Destination must be a valid hexadecimal string")
         return v.lower()
 
 
 class PingRequest(BaseModel):
     """Request to ping a node."""
 
-    destination: str = Field(..., min_length=64, max_length=64, description="64-character destination public key")
+    destination: str = Field(
+        ..., min_length=64, max_length=64, description="64-character destination public key"
+    )
 
-    @field_validator('destination')
+    @field_validator("destination")
     @classmethod
     def validate_hex(cls, v: str) -> str:
         """Validate that destination is a valid hex string."""
-        if not all(c in '0123456789abcdefABCDEF' for c in v):
-            raise ValueError('Destination must be a valid hexadecimal string')
+        if not all(c in "0123456789abcdefABCDEF" for c in v):
+            raise ValueError("Destination must be a valid hexadecimal string")
         return v.lower()
 
 
 class SendTelemetryRequestRequest(BaseModel):
     """Request to send a telemetry request."""
 
-    destination: str = Field(..., min_length=64, max_length=64, description="64-character destination public key")
+    destination: str = Field(
+        ..., min_length=64, max_length=64, description="64-character destination public key"
+    )
 
-    @field_validator('destination')
+    @field_validator("destination")
     @classmethod
     def validate_hex(cls, v: str) -> str:
         """Validate that destination is a valid hex string."""
-        if not all(c in '0123456789abcdefABCDEF' for c in v):
-            raise ValueError('Destination must be a valid hexadecimal string')
+        if not all(c in "0123456789abcdefABCDEF" for c in v):
+            raise ValueError("Destination must be a valid hexadecimal string")
         return v.lower()
 
 
 # ============================================================================
 # Command Response Schemas
 # ============================================================================
+
 
 class QueueInfoSchema(BaseModel):
     """Information about a command's position in the queue."""
@@ -287,7 +322,9 @@ class QueueInfoSchema(BaseModel):
     estimated_wait_seconds: float = Field(..., description="Estimated wait time in seconds")
     queue_size: int = Field(..., description="Current queue size")
     debounced: bool = Field(..., description="Whether command was debounced")
-    original_request_time: Optional[str] = Field(None, description="Original request time for debounced commands")
+    original_request_time: Optional[str] = Field(
+        None, description="Original request time for debounced commands"
+    )
 
 
 class SendMessageResponse(BaseModel):
@@ -344,6 +381,7 @@ class SendTelemetryRequestResponse(BaseModel):
 # Health Check Schemas
 # ============================================================================
 
+
 class QueueStatsSchema(BaseModel):
     """Queue statistics for health check."""
 
@@ -389,6 +427,7 @@ class MeshCoreHealthResponse(BaseModel):
 # Tag Schemas
 # ============================================================================
 
+
 class CoordinateValue(BaseModel):
     """Coordinate value with validation."""
 
@@ -399,26 +438,28 @@ class CoordinateValue(BaseModel):
 class TagValueUpdateRequest(BaseModel):
     """Tag value for updating a single tag (key comes from URL path)."""
 
-    value_type: Literal["string", "number", "boolean", "coordinate"] = Field(..., description="Value type")
+    value_type: Literal["string", "number", "boolean", "coordinate"] = Field(
+        ..., description="Value type"
+    )
     value: Union[str, float, int, bool, CoordinateValue] = Field(..., description="Tag value")
 
-    @field_validator('value')
+    @field_validator("value")
     @classmethod
     def validate_value_type(cls, v, info: ValidationInfo):
         """Validate value matches declared type."""
-        value_type = info.data.get('value_type')
-        if value_type == 'string' and not isinstance(v, str):
-            raise ValueError('Value must be a string for string type')
-        elif value_type == 'number':
+        value_type = info.data.get("value_type")
+        if value_type == "string" and not isinstance(v, str):
+            raise ValueError("Value must be a string for string type")
+        elif value_type == "number":
             # Check for boolean first since bool is subclass of int in Python
             if isinstance(v, bool):
-                raise ValueError('Value must be a number for number type, not a boolean')
+                raise ValueError("Value must be a number for number type, not a boolean")
             if not isinstance(v, (int, float)):
-                raise ValueError('Value must be a number for number type')
-        elif value_type == 'boolean' and not isinstance(v, bool):
-            raise ValueError('Value must be a boolean for boolean type')
-        elif value_type == 'coordinate' and not isinstance(v, CoordinateValue):
-            raise ValueError('Value must be a CoordinateValue for coordinate type')
+                raise ValueError("Value must be a number for number type")
+        elif value_type == "boolean" and not isinstance(v, bool):
+            raise ValueError("Value must be a boolean for boolean type")
+        elif value_type == "coordinate" and not isinstance(v, CoordinateValue):
+            raise ValueError("Value must be a CoordinateValue for coordinate type")
         return v
 
 
@@ -426,26 +467,28 @@ class TagValueRequest(BaseModel):
     """Tagged value for setting/updating tags (includes key for bulk operations)."""
 
     key: str = Field(..., min_length=1, max_length=128, description="Tag key")
-    value_type: Literal["string", "number", "boolean", "coordinate"] = Field(..., description="Value type")
+    value_type: Literal["string", "number", "boolean", "coordinate"] = Field(
+        ..., description="Value type"
+    )
     value: Union[str, float, int, bool, CoordinateValue] = Field(..., description="Tag value")
 
-    @field_validator('value')
+    @field_validator("value")
     @classmethod
     def validate_value_type(cls, v, info: ValidationInfo):
         """Validate value matches declared type."""
-        value_type = info.data.get('value_type')
-        if value_type == 'string' and not isinstance(v, str):
-            raise ValueError('Value must be a string for string type')
-        elif value_type == 'number':
+        value_type = info.data.get("value_type")
+        if value_type == "string" and not isinstance(v, str):
+            raise ValueError("Value must be a string for string type")
+        elif value_type == "number":
             # Check for boolean first since bool is subclass of int in Python
             if isinstance(v, bool):
-                raise ValueError('Value must be a number for number type, not a boolean')
+                raise ValueError("Value must be a number for number type, not a boolean")
             if not isinstance(v, (int, float)):
-                raise ValueError('Value must be a number for number type')
-        elif value_type == 'boolean' and not isinstance(v, bool):
-            raise ValueError('Value must be a boolean for boolean type')
-        elif value_type == 'coordinate' and not isinstance(v, CoordinateValue):
-            raise ValueError('Value must be a CoordinateValue for coordinate type')
+                raise ValueError("Value must be a number for number type")
+        elif value_type == "boolean" and not isinstance(v, bool):
+            raise ValueError("Value must be a boolean for boolean type")
+        elif value_type == "coordinate" and not isinstance(v, CoordinateValue):
+            raise ValueError("Value must be a CoordinateValue for coordinate type")
         return v
 
 
@@ -473,7 +516,9 @@ class NodeTagListResponse(BaseModel):
 class BulkTagUpdateRequest(BaseModel):
     """Request to update multiple tags on a single node."""
 
-    tags: List[TagValueRequest] = Field(..., min_length=1, max_length=50, description="Tags to set/update")
+    tags: List[TagValueRequest] = Field(
+        ..., min_length=1, max_length=50, description="Tags to set/update"
+    )
 
 
 class BulkTagUpdateResponse(BaseModel):

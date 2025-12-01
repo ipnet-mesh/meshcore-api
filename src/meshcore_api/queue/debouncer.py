@@ -1,6 +1,7 @@
 """
 Command debouncer for preventing duplicate commands.
 """
+
 import asyncio
 import hashlib
 import json
@@ -96,7 +97,8 @@ class CommandDebouncer:
                 async with self._lock:
                     # Remove expired entries
                     expired_hashes = [
-                        h for h, cmd in self._cache.items()
+                        h
+                        for h, cmd in self._cache.items()
                         if self._is_expired(cmd) and not cmd.pending
                     ]
                     for h in expired_hashes:

@@ -4,9 +4,11 @@ import logging
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Optional
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
+
 from .models import Base
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ class DatabaseEngine:
             connection_string,
             echo=False,
             pool_pre_ping=True,
-            connect_args={"check_same_thread": False}  # Allow multi-threaded access
+            connect_args={"check_same_thread": False},  # Allow multi-threaded access
         )
 
         # Enable foreign keys for SQLite

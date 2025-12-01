@@ -3,9 +3,9 @@
 import asyncio
 import json
 import signal
+
 from meshcore_api.config import Config
 from meshcore_api.meshcore.real import RealMeshCore
-
 
 TARGET_EVENTS = {"CONTACT_MSG_RECV", "CHANNEL_MSG_RECV", "MSG_SENT", "TRACE_DATA"}
 

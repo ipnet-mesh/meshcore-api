@@ -4,13 +4,13 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import Session
 
-from .api.schemas import TagValueRequest, CoordinateValue
-from .api.routes.tags import ensure_node_exists, create_or_update_tag
+from .api.routes.tags import create_or_update_tag, ensure_node_exists
+from .api.schemas import CoordinateValue, TagValueRequest
 from .database.engine import DatabaseEngine
 from .utils.address import normalize_public_key, validate_public_key
 
@@ -41,7 +41,10 @@ class ValidationResult:
         print("\nValidation errors:", file=sys.stderr)
         for error in self.errors:
             if error.node_public_key and error.tag_key:
-                print(f"  Node {error.node_public_key[:8]}..., tag '{error.tag_key}': {error.message}", file=sys.stderr)
+                print(
+                    f"  Node {error.node_public_key[:8]}..., tag '{error.tag_key}': {error.message}",
+                    file=sys.stderr,
+                )
             elif error.node_public_key:
                 print(f"  Node {error.node_public_key[:8]}...: {error.message}", file=sys.stderr)
             else:
@@ -64,17 +67,27 @@ class ImportResult:
             print(f"Would update {self.nodes_processed} nodes with {self.tags_processed} tags")
         else:
             if self.success:
-                print(f"\nSuccessfully updated {self.nodes_processed} nodes with {self.tags_processed} tags")
+                print(
+                    f"\nSuccessfully updated {self.nodes_processed} nodes with {self.tags_processed} tags"
+                )
             else:
-                print(f"\nPartially completed: {self.nodes_processed} nodes, {self.tags_processed} tags", file=sys.stderr)
+                print(
+                    f"\nPartially completed: {self.nodes_processed} nodes, {self.tags_processed} tags",
+                    file=sys.stderr,
+                )
 
         if self.errors:
             print(f"\nErrors encountered: {len(self.errors)}", file=sys.stderr)
             for error in self.errors[:10]:  # Show first 10 errors
                 if error.node_public_key and error.tag_key:
-                    print(f"  Node {error.node_public_key[:8]}..., tag '{error.tag_key}': {error.message}", file=sys.stderr)
+                    print(
+                        f"  Node {error.node_public_key[:8]}..., tag '{error.tag_key}': {error.message}",
+                        file=sys.stderr,
+                    )
                 elif error.node_public_key:
-                    print(f"  Node {error.node_public_key[:8]}...: {error.message}", file=sys.stderr)
+                    print(
+                        f"  Node {error.node_public_key[:8]}...: {error.message}", file=sys.stderr
+                    )
                 else:
                     print(f"  {error.message}", file=sys.stderr)
             if len(self.errors) > 10:
@@ -112,7 +125,7 @@ class TagImporter:
 
         # Parse JSON
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
             errors.append(TagValidationError(None, None, f"Invalid JSON: {e}"))
@@ -135,28 +148,26 @@ class TagImporter:
             try:
                 normalized_key = normalize_public_key(node_key)
             except ValueError as e:
-                errors.append(TagValidationError(
-                    node_key,
-                    None,
-                    "Invalid public key format (must be hexadecimal characters)"
-                ))
+                errors.append(
+                    TagValidationError(
+                        node_key, None, "Invalid public key format (must be hexadecimal characters)"
+                    )
+                )
                 continue
 
             if not validate_public_key(normalized_key, allow_prefix=False):
-                errors.append(TagValidationError(
-                    node_key,
-                    None,
-                    "Invalid public key length (must be 64 hexadecimal characters)"
-                ))
+                errors.append(
+                    TagValidationError(
+                        node_key,
+                        None,
+                        "Invalid public key length (must be 64 hexadecimal characters)",
+                    )
+                )
                 continue
 
             # Validate tags structure
             if not isinstance(tags, dict):
-                errors.append(TagValidationError(
-                    normalized_key,
-                    None,
-                    "Tags must be an object"
-                ))
+                errors.append(TagValidationError(normalized_key, None, "Tags must be an object"))
                 continue
 
             node_count += 1
@@ -167,49 +178,47 @@ class TagImporter:
 
                 # Validate tag structure
                 if not isinstance(tag_data, dict):
-                    errors.append(TagValidationError(
-                        normalized_key,
-                        tag_key,
-                        "Tag must be an object with 'value_type' and 'value' fields"
-                    ))
+                    errors.append(
+                        TagValidationError(
+                            normalized_key,
+                            tag_key,
+                            "Tag must be an object with 'value_type' and 'value' fields",
+                        )
+                    )
                     continue
 
-                if 'value_type' not in tag_data or 'value' not in tag_data:
-                    errors.append(TagValidationError(
-                        normalized_key,
-                        tag_key,
-                        "Tag must have 'value_type' and 'value' fields"
-                    ))
+                if "value_type" not in tag_data or "value" not in tag_data:
+                    errors.append(
+                        TagValidationError(
+                            normalized_key, tag_key, "Tag must have 'value_type' and 'value' fields"
+                        )
+                    )
                     continue
 
                 # Validate using Pydantic schema
                 try:
                     # Convert coordinate dict to CoordinateValue if needed
-                    value = tag_data['value']
-                    if tag_data['value_type'] == 'coordinate':
+                    value = tag_data["value"]
+                    if tag_data["value_type"] == "coordinate":
                         if isinstance(value, dict):
                             value = CoordinateValue(**value)
                         else:
-                            raise ValueError("Coordinate value must be an object with 'latitude' and 'longitude'")
+                            raise ValueError(
+                                "Coordinate value must be an object with 'latitude' and 'longitude'"
+                            )
 
-                    TagValueRequest(
-                        key=tag_key,
-                        value_type=tag_data['value_type'],
-                        value=value
-                    )
+                    TagValueRequest(key=tag_key, value_type=tag_data["value_type"], value=value)
                 except PydanticValidationError as e:
-                    error_messages = '; '.join([f"{err['loc'][0]}: {err['msg']}" for err in e.errors()])
-                    errors.append(TagValidationError(
-                        normalized_key,
-                        tag_key,
-                        f"Validation error: {error_messages}"
-                    ))
+                    error_messages = "; ".join(
+                        [f"{err['loc'][0]}: {err['msg']}" for err in e.errors()]
+                    )
+                    errors.append(
+                        TagValidationError(
+                            normalized_key, tag_key, f"Validation error: {error_messages}"
+                        )
+                    )
                 except ValueError as e:
-                    errors.append(TagValidationError(
-                        normalized_key,
-                        tag_key,
-                        str(e)
-                    ))
+                    errors.append(TagValidationError(normalized_key, tag_key, str(e)))
 
         valid = len(errors) == 0
         return data, ValidationResult(valid, errors, node_count, tag_count)
@@ -219,7 +228,7 @@ class TagImporter:
         data: Dict[str, Dict[str, Any]],
         dry_run: bool = False,
         continue_on_error: bool = False,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> ImportResult:
         """
         Import tags from validated data.
@@ -247,8 +256,8 @@ class TagImporter:
                 for tag_key, tag_data in tags.items():
                     tags_processed += 1
                     if verbose:
-                        value_display = tag_data['value']
-                        if tag_data['value_type'] == 'coordinate':
+                        value_display = tag_data["value"]
+                        if tag_data["value_type"] == "coordinate":
                             value_display = f"({tag_data['value']['latitude']}, {tag_data['value']['longitude']})"
                         print(f"  - {tag_key}: {value_display}")
 
@@ -291,10 +300,7 @@ class TagImporter:
         return ImportResult(success, nodes_processed, tags_processed, errors)
 
     def _process_batch(
-        self,
-        batch: List[tuple[str, Dict[str, Any]]],
-        continue_on_error: bool,
-        verbose: bool
+        self, batch: List[tuple[str, Dict[str, Any]]], continue_on_error: bool, verbose: bool
     ) -> tuple[bool, int, int, List[TagValidationError]]:
         """
         Process a batch of nodes and tags.
@@ -325,15 +331,13 @@ class TagImporter:
                         for tag_key, tag_data in tags.items():
                             try:
                                 # Convert coordinate dict to CoordinateValue if needed
-                                value = tag_data['value']
-                                if tag_data['value_type'] == 'coordinate':
+                                value = tag_data["value"]
+                                if tag_data["value_type"] == "coordinate":
                                     if isinstance(value, dict):
                                         value = CoordinateValue(**value)
 
                                 tag_request = TagValueRequest(
-                                    key=tag_key,
-                                    value_type=tag_data['value_type'],
-                                    value=value
+                                    key=tag_key, value_type=tag_data["value_type"], value=value
                                 )
 
                                 create_or_update_tag(session, node_key, tag_request)
@@ -368,7 +372,7 @@ class TagImporter:
         dry_run: bool = False,
         continue_on_error: bool = False,
         validate_only: bool = False,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> ImportResult:
         """
         Import tags from a JSON file.
@@ -392,7 +396,9 @@ class TagImporter:
             validation_result.print_errors()
             return ImportResult(False, 0, 0, validation_result.errors)
 
-        print(f"Validated: {validation_result.node_count} nodes, {validation_result.tag_count} tags")
+        print(
+            f"Validated: {validation_result.node_count} nodes, {validation_result.tag_count} tags"
+        )
 
         if validate_only:
             print("Validation complete (--validate-only mode)")

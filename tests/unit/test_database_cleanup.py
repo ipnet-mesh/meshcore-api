@@ -24,9 +24,9 @@ class TestDataCleanup:
 
         assert cleanup.retention_days == 45
 
-    @patch('meshcore_api.database.cleanup.session_scope')
-    @patch('meshcore_api.database.cleanup.delete')
-    @patch('meshcore_api.database.cleanup.logger')
+    @patch("meshcore_api.database.cleanup.session_scope")
+    @patch("meshcore_api.database.cleanup.delete")
+    @patch("meshcore_api.database.cleanup.logger")
     def test_cleanup_old_data(self, mock_logger, mock_delete, mock_session_scope):
         """Test cleanup old data functionality."""
         # Setup mocks
@@ -58,7 +58,7 @@ class TestDataCleanup:
         # Verify logger was called
         mock_logger.info.assert_called()
 
-    @patch('meshcore_api.database.cleanup.session_scope')
+    @patch("meshcore_api.database.cleanup.session_scope")
     def test_cleanup_with_different_retention_days(self, mock_session_scope):
         """Test cleanup with different retention periods."""
         mock_session = Mock()
@@ -76,8 +76,8 @@ class TestDataCleanup:
         assert cleanup.retention_days == 7
         assert isinstance(result, dict)
 
-    @patch('meshcore_api.database.cleanup.session_scope')
-    @patch('meshcore_api.database.cleanup.logger')
+    @patch("meshcore_api.database.cleanup.session_scope")
+    @patch("meshcore_api.database.cleanup.logger")
     def test_cleanup_logging(self, mock_logger, mock_session_scope):
         """Test cleanup logging functionality."""
         mock_session = Mock()
@@ -104,7 +104,7 @@ class TestDataCleanup:
             cleanup = DataCleanup(retention_days=period)
             assert cleanup.retention_days == period
 
-    @patch('meshcore_api.database.cleanup.session_scope')
+    @patch("meshcore_api.database.cleanup.session_scope")
     def test_cleanup_result_counts(self, mock_session_scope):
         """Test cleanup returns correct deletion counts."""
         mock_session = Mock()

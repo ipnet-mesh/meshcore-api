@@ -184,7 +184,9 @@ class TestCommandQueueManagerEnqueue:
         await manager.enqueue(CommandType.SEND_MESSAGE, {"destination": "a" * 64, "text": "2"})
 
         # Third should succeed by dropping oldest
-        result, info = await manager.enqueue(CommandType.SEND_MESSAGE, {"destination": "a" * 64, "text": "3"})
+        result, info = await manager.enqueue(
+            CommandType.SEND_MESSAGE, {"destination": "a" * 64, "text": "3"}
+        )
         assert result.success is True
         assert "dropped" in result.message.lower()
 

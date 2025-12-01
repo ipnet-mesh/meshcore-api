@@ -1,14 +1,14 @@
 """FastAPI dependency injection for database and MeshCore access."""
 
 from typing import Generator, Optional
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from ..config import Config
 from ..database.engine import session_scope
 from ..meshcore.interface import MeshCoreInterface
 from ..queue import CommandQueueManager
-from ..config import Config
-
 
 # Global MeshCore instance (set during app startup)
 _meshcore_instance: Optional[MeshCoreInterface] = None
@@ -144,5 +144,5 @@ def check_write_enabled() -> None:
     if not _config_instance.enable_write:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Writing and specific actions not available in read-only mode"
+            detail="Writing and specific actions not available in read-only mode",
         )

@@ -1,13 +1,14 @@
 """Abstract interface for MeshCore implementations."""
 
 from abc import ABC, abstractmethod
-from typing import Callable, Any, Optional, List
 from dataclasses import dataclass
+from typing import Any, Callable, List, Optional
 
 
 @dataclass
 class Event:
     """Represents a MeshCore event."""
+
     type: str
     payload: dict
 
@@ -15,6 +16,7 @@ class Event:
 @dataclass
 class Contact:
     """Represents a MeshCore contact."""
+
     public_key: str
     name: Optional[str] = None
     node_type: Optional[str] = None
