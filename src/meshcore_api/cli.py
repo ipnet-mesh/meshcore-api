@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from .config import Config
+from .config import Config, MCPConfig
 from .query import DatabaseQuery
 from .utils.logging import setup_logging
 
@@ -486,27 +486,26 @@ def mcp(host, port, mcp_api_bearer_token, api_url, api_token, log_level, stdio):
 
     \b
       # Start MCP server pointing to local API
-      meshcore_api mcp --api-url http://localhost:8080
+      meshcore_api mcp --api-url http://localhost:8000
 
       # With MCP server authentication (protects the MCP server itself)
-      meshcore_api mcp --api-url http://localhost:8080 --mcp-api-bearer-token "mcp-secret"
+      meshcore_api mcp --api-url http://localhost:8000 --mcp-api-bearer-token "mcp-secret"
 
       # With MeshCore API authentication (for API that requires auth)
-      meshcore_api mcp --api-url http://localhost:8080 --api-token "api-secret"
+      meshcore_api mcp --api-url http://localhost:8000 --api-token "api-secret"
 
       # With both authentications
-      meshcore_api mcp --api-url http://localhost:8080 --mcp-api-bearer-token "mcp-secret" --api-token "api-secret"
+      meshcore_api mcp --api-url http://localhost:8000 --mcp-api-bearer-token "mcp-secret" --api-token "api-secret"
 
       # Custom port
-      meshcore_api mcp --api-url http://localhost:8080 --port 9000
+      meshcore_api mcp --api-url http://localhost:8000 --port 9000
 
       # Debug logging
-      meshcore_api mcp --api-url http://localhost:8080 --log-level DEBUG
+      meshcore_api mcp --api-url http://localhost:8000 --log-level DEBUG
 
       # Stdio mode for direct MCP integration
-      meshcore_api mcp --api-url http://localhost:8080 --stdio
+      meshcore_api mcp --api-url http://localhost:8000 --stdio
     """
-    from .mcp.config import MCPConfig
     from .mcp.server import run_server, run_stdio
 
     # Build CLI args dict

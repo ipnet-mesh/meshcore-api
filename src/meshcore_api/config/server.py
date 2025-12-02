@@ -1,14 +1,30 @@
-"""Configuration management with CLI args, environment variables, and defaults."""
+"""Server configuration for the MeshCore API.
+
+This module defines the main Config class used by the server, query, and tag commands.
+"""
 
 import argparse
 import os
 from dataclasses import dataclass
 from typing import Optional
 
+from .base import EnvVars, get_bool_config_value, get_config_value
+
 
 @dataclass
 class Config:
-    """Application configuration."""
+    """Application configuration for the MeshCore API server.
+
+    Configuration can be set via:
+    1. CLI arguments (highest priority)
+    2. Environment variables
+    3. Default values (lowest priority)
+
+    Environment variable naming convention:
+    - All server config uses MESHCORE_* prefix
+    - Webhook config uses MESHCORE_WEBHOOK_* prefix
+    - Queue/rate limit config uses MESHCORE_* prefix
+    """
 
     # === Connection ===
     serial_port: str = "/dev/ttyUSB0"
@@ -29,7 +45,7 @@ class Config:
 
     # === API ===
     api_host: str = "0.0.0.0"
-    api_port: int = 8080
+    api_port: int = 8000  # Standardized to 8000 (was 8080)
     api_title: str = "MeshCore API"
     api_version: str = "1.0.0"
     api_bearer_token: Optional[str] = None
@@ -294,146 +310,172 @@ class Config:
                 }
             )
 
-        # Helper function to get value with priority: CLI > Env > Default
-        def get_value(cli_arg, env_var, default, type_converter=str):
-            if cli_arg is not None:
-                return cli_arg
-            env_value = os.getenv(env_var)
-            if env_value is not None:
-                if type_converter == bool:
-                    return env_value.lower() in ("true", "1", "yes", "on")
-                return type_converter(env_value)
-            return default
-
         # Build config instance
         config = cls()
 
-        # Apply values with priority
-        config.serial_port = get_value(args.serial_port, "MESHCORE_SERIAL_PORT", config.serial_port)
-        config.serial_baud = get_value(
-            args.serial_baud, "MESHCORE_SERIAL_BAUD", config.serial_baud, int
+        # === Connection settings ===
+        config.serial_port = get_config_value(
+            args.serial_port, EnvVars.SERIAL_PORT, config.serial_port
         )
-        config.use_mock = args.use_mock or get_value(
-            None, "MESHCORE_USE_MOCK", config.use_mock, bool
+        config.serial_baud = get_config_value(
+            args.serial_baud, EnvVars.SERIAL_BAUD, config.serial_baud, int
         )
-        config.mock_scenario = get_value(
-            args.mock_scenario, "MESHCORE_MOCK_SCENARIO", config.mock_scenario
+        config.use_mock = args.use_mock or get_config_value(
+            None, EnvVars.USE_MOCK, config.use_mock, bool
         )
-        config.mock_loop = args.mock_loop or get_value(
-            None, "MESHCORE_MOCK_LOOP", config.mock_loop, bool
+        config.mock_scenario = get_config_value(
+            args.mock_scenario, EnvVars.MOCK_SCENARIO, config.mock_scenario
         )
-        config.mock_nodes = get_value(
-            args.mock_nodes, "MESHCORE_MOCK_NODES", config.mock_nodes, int
+        config.mock_loop = args.mock_loop or get_config_value(
+            None, EnvVars.MOCK_LOOP, config.mock_loop, bool
         )
-        config.mock_min_interval = get_value(
-            args.mock_min_interval, "MESHCORE_MOCK_MIN_INTERVAL", config.mock_min_interval, float
+        config.mock_nodes = get_config_value(
+            args.mock_nodes, EnvVars.MOCK_NODES, config.mock_nodes, int
         )
-        config.mock_max_interval = get_value(
-            args.mock_max_interval, "MESHCORE_MOCK_MAX_INTERVAL", config.mock_max_interval, float
+        config.mock_min_interval = get_config_value(
+            args.mock_min_interval, EnvVars.MOCK_MIN_INTERVAL, config.mock_min_interval, float
         )
-        config.mock_center_lat = get_value(
-            args.mock_center_lat, "MESHCORE_MOCK_CENTER_LAT", config.mock_center_lat, float
+        config.mock_max_interval = get_config_value(
+            args.mock_max_interval, EnvVars.MOCK_MAX_INTERVAL, config.mock_max_interval, float
         )
-        config.mock_center_lon = get_value(
-            args.mock_center_lon, "MESHCORE_MOCK_CENTER_LON", config.mock_center_lon, float
+        config.mock_center_lat = get_config_value(
+            args.mock_center_lat, EnvVars.MOCK_CENTER_LAT, config.mock_center_lat, float
+        )
+        config.mock_center_lon = get_config_value(
+            args.mock_center_lon, EnvVars.MOCK_CENTER_LON, config.mock_center_lon, float
         )
 
-        config.db_path = get_value(args.db_path, "MESHCORE_DB_PATH", config.db_path)
-        config.retention_days = get_value(
-            args.retention_days, "MESHCORE_RETENTION_DAYS", config.retention_days, int
+        # === Database settings ===
+        config.db_path = get_config_value(args.db_path, EnvVars.DB_PATH, config.db_path)
+        config.retention_days = get_config_value(
+            args.retention_days, EnvVars.RETENTION_DAYS, config.retention_days, int
         )
-        config.cleanup_interval_hours = get_value(
+        config.cleanup_interval_hours = get_config_value(
             args.cleanup_interval_hours,
-            "MESHCORE_CLEANUP_INTERVAL_HOURS",
+            EnvVars.CLEANUP_INTERVAL_HOURS,
             config.cleanup_interval_hours,
             int,
         )
 
-        config.api_host = get_value(args.api_host, "MESHCORE_API_HOST", config.api_host)
-        config.api_port = get_value(args.api_port, "MESHCORE_API_PORT", config.api_port, int)
-        config.api_title = get_value(args.api_title, "MESHCORE_API_TITLE", config.api_title)
-        config.api_version = get_value(args.api_version, "MESHCORE_API_VERSION", config.api_version)
-        config.api_bearer_token = get_value(
-            args.api_bearer_token, "MESHCORE_API_BEARER_TOKEN", config.api_bearer_token
+        # === API settings ===
+        config.api_host = get_config_value(args.api_host, EnvVars.API_HOST, config.api_host)
+        config.api_port = get_config_value(args.api_port, EnvVars.API_PORT, config.api_port, int)
+        config.api_title = get_config_value(args.api_title, EnvVars.API_TITLE, config.api_title)
+        config.api_version = get_config_value(
+            args.api_version, EnvVars.API_VERSION, config.api_version
+        )
+        config.api_bearer_token = get_config_value(
+            args.api_bearer_token, EnvVars.API_BEARER_TOKEN, config.api_bearer_token
         )
 
-        config.metrics_enabled = not args.no_metrics and get_value(
-            None, "MESHCORE_METRICS_ENABLED", config.metrics_enabled, bool
+        # === Metrics settings ===
+        config.metrics_enabled = not args.no_metrics and get_config_value(
+            None, EnvVars.METRICS_ENABLED, config.metrics_enabled, bool
         )
 
-        config.enable_write = not args.no_write and get_value(
-            None, "MESHCORE_ENABLE_WRITE", config.enable_write, bool
+        # === Write operations settings ===
+        config.enable_write = not args.no_write and get_config_value(
+            None, EnvVars.ENABLE_WRITE, config.enable_write, bool
         )
 
-        config.log_level = get_value(args.log_level, "MESHCORE_LOG_LEVEL", config.log_level)
-        config.log_format = get_value(args.log_format, "MESHCORE_LOG_FORMAT", config.log_format)
+        # === Logging settings ===
+        config.log_level = get_config_value(args.log_level, EnvVars.LOG_LEVEL, config.log_level)
+        config.log_format = get_config_value(args.log_format, EnvVars.LOG_FORMAT, config.log_format)
 
-        config.webhook_message_direct = get_value(
-            args.webhook_message_direct, "WEBHOOK_MESSAGE_DIRECT", config.webhook_message_direct
+        # === Webhook settings (with backward compatibility for legacy env vars) ===
+        config.webhook_message_direct = get_config_value(
+            args.webhook_message_direct,
+            EnvVars.WEBHOOK_MESSAGE_DIRECT,
+            config.webhook_message_direct,
+            str,
+            EnvVars.LEGACY_WEBHOOK_MESSAGE_DIRECT,
         )
-        config.webhook_message_channel = get_value(
-            args.webhook_message_channel, "WEBHOOK_MESSAGE_CHANNEL", config.webhook_message_channel
+        config.webhook_message_channel = get_config_value(
+            args.webhook_message_channel,
+            EnvVars.WEBHOOK_MESSAGE_CHANNEL,
+            config.webhook_message_channel,
+            str,
+            EnvVars.LEGACY_WEBHOOK_MESSAGE_CHANNEL,
         )
-        config.webhook_advertisement = get_value(
-            args.webhook_advertisement, "WEBHOOK_ADVERTISEMENT", config.webhook_advertisement
+        config.webhook_advertisement = get_config_value(
+            args.webhook_advertisement,
+            EnvVars.WEBHOOK_ADVERTISEMENT,
+            config.webhook_advertisement,
+            str,
+            EnvVars.LEGACY_WEBHOOK_ADVERTISEMENT,
         )
-        config.webhook_timeout = get_value(
-            args.webhook_timeout, "WEBHOOK_TIMEOUT", config.webhook_timeout, int
+        config.webhook_timeout = get_config_value(
+            args.webhook_timeout,
+            EnvVars.WEBHOOK_TIMEOUT,
+            config.webhook_timeout,
+            int,
+            EnvVars.LEGACY_WEBHOOK_TIMEOUT,
         )
-        config.webhook_retry_count = get_value(
-            args.webhook_retry_count, "WEBHOOK_RETRY_COUNT", config.webhook_retry_count, int
+        config.webhook_retry_count = get_config_value(
+            args.webhook_retry_count,
+            EnvVars.WEBHOOK_RETRY_COUNT,
+            config.webhook_retry_count,
+            int,
+            EnvVars.LEGACY_WEBHOOK_RETRY_COUNT,
         )
-        config.webhook_message_direct_jsonpath = get_value(
+        config.webhook_message_direct_jsonpath = get_config_value(
             args.webhook_message_direct_jsonpath,
-            "WEBHOOK_MESSAGE_DIRECT_JSONPATH",
+            EnvVars.WEBHOOK_MESSAGE_DIRECT_JSONPATH,
             config.webhook_message_direct_jsonpath,
+            str,
+            EnvVars.LEGACY_WEBHOOK_MESSAGE_DIRECT_JSONPATH,
         )
-        config.webhook_message_channel_jsonpath = get_value(
+        config.webhook_message_channel_jsonpath = get_config_value(
             args.webhook_message_channel_jsonpath,
-            "WEBHOOK_MESSAGE_CHANNEL_JSONPATH",
+            EnvVars.WEBHOOK_MESSAGE_CHANNEL_JSONPATH,
             config.webhook_message_channel_jsonpath,
+            str,
+            EnvVars.LEGACY_WEBHOOK_MESSAGE_CHANNEL_JSONPATH,
         )
-        config.webhook_advertisement_jsonpath = get_value(
+        config.webhook_advertisement_jsonpath = get_config_value(
             args.webhook_advertisement_jsonpath,
-            "WEBHOOK_ADVERTISEMENT_JSONPATH",
+            EnvVars.WEBHOOK_ADVERTISEMENT_JSONPATH,
             config.webhook_advertisement_jsonpath,
+            str,
+            EnvVars.LEGACY_WEBHOOK_ADVERTISEMENT_JSONPATH,
         )
 
-        config.queue_max_size = get_value(
-            args.queue_max_size, "MESHCORE_QUEUE_MAX_SIZE", config.queue_max_size, int
+        # === Command Queue settings ===
+        config.queue_max_size = get_config_value(
+            args.queue_max_size, EnvVars.QUEUE_MAX_SIZE, config.queue_max_size, int
         )
-        config.queue_full_behavior = get_value(
-            args.queue_full_behavior, "MESHCORE_QUEUE_FULL_BEHAVIOR", config.queue_full_behavior
+        config.queue_full_behavior = get_config_value(
+            args.queue_full_behavior, EnvVars.QUEUE_FULL_BEHAVIOR, config.queue_full_behavior
         )
-        config.rate_limit_enabled = not args.no_rate_limit and get_value(
-            None, "MESHCORE_RATE_LIMIT_ENABLED", config.rate_limit_enabled, bool
+        config.rate_limit_enabled = not args.no_rate_limit and get_config_value(
+            None, EnvVars.RATE_LIMIT_ENABLED, config.rate_limit_enabled, bool
         )
-        config.rate_limit_per_second = get_value(
+        config.rate_limit_per_second = get_config_value(
             args.rate_limit_per_second,
-            "MESHCORE_RATE_LIMIT_PER_SECOND",
+            EnvVars.RATE_LIMIT_PER_SECOND,
             config.rate_limit_per_second,
             float,
         )
-        config.rate_limit_burst = get_value(
-            args.rate_limit_burst, "MESHCORE_RATE_LIMIT_BURST", config.rate_limit_burst, int
+        config.rate_limit_burst = get_config_value(
+            args.rate_limit_burst, EnvVars.RATE_LIMIT_BURST, config.rate_limit_burst, int
         )
-        config.debounce_enabled = not args.no_debounce and get_value(
-            None, "MESHCORE_DEBOUNCE_ENABLED", config.debounce_enabled, bool
+        config.debounce_enabled = not args.no_debounce and get_config_value(
+            None, EnvVars.DEBOUNCE_ENABLED, config.debounce_enabled, bool
         )
-        config.debounce_window_seconds = get_value(
+        config.debounce_window_seconds = get_config_value(
             args.debounce_window,
-            "MESHCORE_DEBOUNCE_WINDOW_SECONDS",
+            EnvVars.DEBOUNCE_WINDOW_SECONDS,
             config.debounce_window_seconds,
             float,
         )
-        config.debounce_cache_max_size = get_value(
+        config.debounce_cache_max_size = get_config_value(
             args.debounce_cache_size,
-            "MESHCORE_DEBOUNCE_CACHE_MAX_SIZE",
+            EnvVars.DEBOUNCE_CACHE_MAX_SIZE,
             config.debounce_cache_max_size,
             int,
         )
-        config.debounce_commands = get_value(
-            args.debounce_commands, "MESHCORE_DEBOUNCE_COMMANDS", config.debounce_commands
+        config.debounce_commands = get_config_value(
+            args.debounce_commands, EnvVars.DEBOUNCE_COMMANDS, config.debounce_commands
         )
 
         return config

@@ -98,9 +98,9 @@ Supported value types:
 
 Start the MeshCore MCP (Model Context Protocol) server:
 ```bash
-meshcore_api mcp --api-url http://localhost:8080
-meshcore_api mcp --api-url http://localhost:8080 --api-token "secret"
-meshcore_api mcp --api-url http://localhost:8080 --port 9000
+meshcore_api mcp --api-url http://localhost:8000
+meshcore_api mcp --api-url http://localhost:8000 --api-token "secret"
+meshcore_api mcp --api-url http://localhost:8000 --port 9000
 ```
 
 The MCP server provides AI/LLM integration tools for interacting with the MeshCore API. It runs as an HTTP server (default port 8081) or in stdio mode.
@@ -117,17 +117,18 @@ Common options:
 - `--host`: MCP server host (default: 0.0.0.0)
 - `--port`: MCP server port (default: 8081)
 - `--mcp-api-bearer-token`: Bearer token for MCP server authentication (optional)
-- `--api-url`: MeshCore API URL (required, e.g., http://localhost:8080)
+- `--api-url`: MeshCore API URL (required, e.g., http://localhost:8000)
 - `--api-token`: Bearer token for MeshCore API authentication (if API requires auth)
 - `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
 - `--stdio`: Run in stdio mode instead of HTTP server
 
-Environment variables:
+Environment variables (all use `MCP_` prefix for consistency):
 - `MCP_HOST`: MCP server host
 - `MCP_PORT`: MCP server port
 - `MCP_API_BEARER_TOKEN`: Bearer token for MCP server authentication
-- `MESHCORE_API_URL`: MeshCore API URL
-- `MESHCORE_API_TOKEN`: Bearer token for MeshCore API authentication
+- `MCP_API_URL`: MeshCore API URL (fallback: `MESHCORE_API_URL` for backward compatibility)
+- `MCP_API_TOKEN`: Bearer token for MeshCore API authentication (fallback: `MESHCORE_API_TOKEN`)
+- `MCP_LOG_LEVEL`: Logging level (fallback: `MESHCORE_LOG_LEVEL`)
 
 **Available MCP Tools:**
 - `meshcore_get_messages` - Query messages from the mesh network
@@ -135,6 +136,24 @@ Environment variables:
 - `meshcore_send_channel_message` - Send a broadcast message to all nodes
 - `meshcore_get_advertisements` - Query advertisements from the mesh network
 - `meshcore_send_advertisement` - Send an advertisement to announce this device
+
+## Environment Variable Naming Convention
+
+All environment variables follow a consistent naming convention:
+
+| Category | Prefix | Examples |
+|----------|--------|----------|
+| Server/API | `MESHCORE_` | `MESHCORE_API_HOST`, `MESHCORE_API_PORT`, `MESHCORE_API_BEARER_TOKEN` |
+| Database | `MESHCORE_` | `MESHCORE_DB_PATH`, `MESHCORE_RETENTION_DAYS` |
+| Connection/Mock | `MESHCORE_` | `MESHCORE_SERIAL_PORT`, `MESHCORE_USE_MOCK` |
+| Logging | `MESHCORE_` | `MESHCORE_LOG_LEVEL`, `MESHCORE_LOG_FORMAT` |
+| Webhooks | `MESHCORE_WEBHOOK_` | `MESHCORE_WEBHOOK_MESSAGE_DIRECT`, `MESHCORE_WEBHOOK_TIMEOUT` |
+| Queue/Rate Limiting | `MESHCORE_` | `MESHCORE_QUEUE_MAX_SIZE`, `MESHCORE_RATE_LIMIT_ENABLED` |
+| MCP Server | `MCP_` | `MCP_HOST`, `MCP_PORT`, `MCP_API_URL`, `MCP_API_TOKEN` |
+
+**Configuration Priority:** CLI arguments > Environment variables > Default values
+
+**Backward Compatibility:** Legacy environment variable names (e.g., `WEBHOOK_*` without prefix, `MESHCORE_API_URL` for MCP) are still supported as fallbacks but are deprecated.
 
 ## Database Schema
 
@@ -183,19 +202,21 @@ The application can send HTTP POST notifications to external URLs when specific 
 
 Configure webhooks via environment variables or CLI arguments:
 
-**Environment Variables:**
+**Environment Variables (all use `MESHCORE_WEBHOOK_` prefix for consistency):**
 ```bash
-WEBHOOK_MESSAGE_DIRECT=https://example.com/webhooks/direct
-WEBHOOK_MESSAGE_CHANNEL=https://example.com/webhooks/channel
-WEBHOOK_ADVERTISEMENT=https://example.com/webhooks/adverts
-WEBHOOK_TIMEOUT=10              # HTTP timeout in seconds (default: 5)
-WEBHOOK_RETRY_COUNT=5           # Number of retry attempts (default: 3)
+MESHCORE_WEBHOOK_MESSAGE_DIRECT=https://example.com/webhooks/direct
+MESHCORE_WEBHOOK_MESSAGE_CHANNEL=https://example.com/webhooks/channel
+MESHCORE_WEBHOOK_ADVERTISEMENT=https://example.com/webhooks/adverts
+MESHCORE_WEBHOOK_TIMEOUT=10              # HTTP timeout in seconds (default: 5)
+MESHCORE_WEBHOOK_RETRY_COUNT=5           # Number of retry attempts (default: 3)
 
 # JSONPath expressions to filter webhook payloads (default: "$" for full payload)
-WEBHOOK_MESSAGE_DIRECT_JSONPATH="$.data.text"
-WEBHOOK_MESSAGE_CHANNEL_JSONPATH="$.data.text"
-WEBHOOK_ADVERTISEMENT_JSONPATH="$"
+MESHCORE_WEBHOOK_MESSAGE_DIRECT_JSONPATH="$.data.text"
+MESHCORE_WEBHOOK_MESSAGE_CHANNEL_JSONPATH="$.data.text"
+MESHCORE_WEBHOOK_ADVERTISEMENT_JSONPATH="$"
 ```
+
+**Note:** Legacy environment variables without the `MESHCORE_` prefix (e.g., `WEBHOOK_MESSAGE_DIRECT`) are still supported for backward compatibility but are deprecated.
 
 **CLI Arguments:**
 ```bash
