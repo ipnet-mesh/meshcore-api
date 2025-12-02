@@ -11,7 +11,7 @@ services:
       MESHCORE_RETENTION_DAYS: "30"
       MESHCORE_SERIAL_PORT: "/dev/ttyUSB0"  # uncomment and set when using real hardware
       ENABLE_METRICS: "true"
-      # MESHCORE_API_BEARER_TOKEN: "your-secret-token"  # uncomment to enable auth
+      MESHCORE_API_BEARER_TOKEN: "secret-meshcore-api-token"
       # WEBHOOK_MESSAGE_DIRECT: http://does-not-exist:5000/webhook
     ports:
       - "8080:8080"
@@ -26,7 +26,8 @@ services:
     command: ["mcp"]
     environment:
       MESHCORE_API_URL: "http://meshcore-api:8080"
-      # MESHCORE_API_TOKEN: "${MESHCORE_API_BEARER_TOKEN:-}"  # uncomment if API auth is enabled
+      MESHCORE_API_TOKEN: "secret-meshcore-api-token"
+      MCP_API_BEARER_TOKEN: "secret-meshcore-mcp-token"
       MCP_PORT: "8081"
       MESHCORE_LOG_LEVEL: "INFO"
     ports:

@@ -116,16 +116,18 @@ This design allows the MCP server to run on a completely separate machine from t
 Common options:
 - `--host`: MCP server host (default: 0.0.0.0)
 - `--port`: MCP server port (default: 8081)
+- `--mcp-api-bearer-token`: Bearer token for MCP server authentication (optional)
 - `--api-url`: MeshCore API URL (required, e.g., http://localhost:8080)
-- `--api-token`: Bearer token for API authentication (if API requires auth)
+- `--api-token`: Bearer token for MeshCore API authentication (if API requires auth)
 - `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
 - `--stdio`: Run in stdio mode instead of HTTP server
 
 Environment variables:
 - `MCP_HOST`: MCP server host
 - `MCP_PORT`: MCP server port
+- `MCP_API_BEARER_TOKEN`: Bearer token for MCP server authentication
 - `MESHCORE_API_URL`: MeshCore API URL
-- `MESHCORE_API_TOKEN`: Bearer token for API authentication
+- `MESHCORE_API_TOKEN`: Bearer token for MeshCore API authentication
 
 **Available MCP Tools:**
 - `meshcore_get_messages` - Query messages from the mesh network

@@ -451,6 +451,11 @@ def tag(json_file, db_path, dry_run, verbose, continue_on_error, validate_only):
     help="MCP server port (default: 8081)",
 )
 @click.option(
+    "--mcp-api-bearer-token",
+    type=str,
+    help="Bearer token for MCP server authentication (optional)",
+)
+@click.option(
     "--api-url",
     type=str,
     help="MeshCore API URL (e.g., http://localhost:8080)",
@@ -470,7 +475,7 @@ def tag(json_file, db_path, dry_run, verbose, continue_on_error, validate_only):
     is_flag=True,
     help="Run in stdio mode instead of HTTP server",
 )
-def mcp(host, port, api_url, api_token, log_level, stdio):
+def mcp(host, port, mcp_api_bearer_token, api_url, api_token, log_level, stdio):
     """Start the MeshCore MCP server.
 
     The MCP server provides Model Context Protocol tools for interacting
@@ -483,8 +488,14 @@ def mcp(host, port, api_url, api_token, log_level, stdio):
       # Start MCP server pointing to local API
       meshcore_api mcp --api-url http://localhost:8080
 
-      # With authentication
-      meshcore_api mcp --api-url http://localhost:8080 --api-token "secret"
+      # With MCP server authentication (protects the MCP server itself)
+      meshcore_api mcp --api-url http://localhost:8080 --mcp-api-bearer-token "mcp-secret"
+
+      # With MeshCore API authentication (for API that requires auth)
+      meshcore_api mcp --api-url http://localhost:8080 --api-token "api-secret"
+
+      # With both authentications
+      meshcore_api mcp --api-url http://localhost:8080 --mcp-api-bearer-token "mcp-secret" --api-token "api-secret"
 
       # Custom port
       meshcore_api mcp --api-url http://localhost:8080 --port 9000
@@ -504,6 +515,8 @@ def mcp(host, port, api_url, api_token, log_level, stdio):
         cli_args["host"] = host
     if port is not None:
         cli_args["port"] = port
+    if mcp_api_bearer_token is not None:
+        cli_args["mcp_api_bearer_token"] = mcp_api_bearer_token
     if api_url is not None:
         cli_args["api_url"] = api_url
     if api_token is not None:

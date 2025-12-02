@@ -496,8 +496,9 @@ meshcore_api mcp --api-url http://localhost:8080 --stdio
 meshcore_api mcp \
   --host 0.0.0.0 \
   --port 8081 \
+  --mcp-api-bearer-token "mcp-server-token" \
   --api-url http://localhost:8080 \
-  --api-token "optional-bearer-token" \
+  --api-token "meshcore-api-token" \
   --log-level INFO
 ```
 
@@ -505,9 +506,33 @@ meshcore_api mcp \
 ```bash
 export MCP_HOST=0.0.0.0
 export MCP_PORT=8081
+export MCP_API_BEARER_TOKEN=mcp-server-token        # Protects the MCP server itself
 export MESHCORE_API_URL=http://localhost:8080
-export MESHCORE_API_TOKEN=your-bearer-token
+export MESHCORE_API_TOKEN=meshcore-api-token        # For authenticating with MeshCore API
 meshcore_api mcp
+```
+
+### Authentication
+
+The MCP server supports two separate authentication tokens:
+
+| Token | CLI Option | Environment Variable | Purpose |
+|-------|------------|---------------------|---------|
+| MCP API Bearer Token | `--mcp-api-bearer-token` | `MCP_API_BEARER_TOKEN` | Protects the MCP server itself (incoming requests) |
+| API Token | `--api-token` | `MESHCORE_API_TOKEN` | Authenticates with the MeshCore REST API (outgoing requests) |
+
+**Example with both tokens:**
+```bash
+# MCP server requires authentication AND connects to authenticated API
+meshcore_api mcp \
+  --api-url http://localhost:8080 \
+  --mcp-api-bearer-token "protect-mcp-server" \
+  --api-token "access-meshcore-api"
+```
+
+When MCP server authentication is enabled, clients must include the Bearer token:
+```bash
+curl -H "Authorization: Bearer protect-mcp-server" http://localhost:8081/mcp
 ```
 
 ### Available MCP Tools

@@ -34,6 +34,8 @@ def create_app(config: MCPConfig):
     Returns:
         Starlette application for streamable HTTP transport
     """
+    from ..api.app import BearerAuthMiddleware
+
     # Configure API connection via global state
     state.configure(api_url=config.api_url, api_token=config.api_token)
 
@@ -44,7 +46,16 @@ def create_app(config: MCPConfig):
         logger.warning("Tools will return errors until API is configured.")
 
     # Get the Starlette app for streamable HTTP transport
-    return mcp.streamable_http_app()
+    app = mcp.streamable_http_app()
+
+    # Add Bearer authentication middleware if configured
+    if config.mcp_api_bearer_token:
+        app.add_middleware(BearerAuthMiddleware, bearer_token=config.mcp_api_bearer_token)
+        logger.info("MCP server Bearer token authentication enabled")
+    else:
+        logger.info("MCP server Bearer token authentication disabled - server is public")
+
+    return app
 
 
 def run_server(config: MCPConfig):

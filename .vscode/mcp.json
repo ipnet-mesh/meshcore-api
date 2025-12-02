@@ -2,7 +2,10 @@
   "servers": {
     "MeshCoreIPNet": {
       "type": "http",
-      "url": "https://mcp.ipnt.uk/mcp/"
+      "url": "https://mcp.ipnt.uk/mcp/",
+      "headers": {
+        "Authorization": "Bearer secret-meshcore-mcp-token"
+      }
     }
   }
 }

@@ -13,9 +13,12 @@ class MCPConfig:
     host: str = "0.0.0.0"
     port: int = 8081
 
+    # === MCP Server Authentication ===
+    mcp_api_bearer_token: Optional[str] = None  # Bearer token to protect the MCP server itself
+
     # === API Connection ===
     api_url: Optional[str] = None
-    api_token: Optional[str] = None
+    api_token: Optional[str] = None  # Bearer token for authenticating with MeshCore API
 
     # === Logging ===
     log_level: str = "INFO"
@@ -52,6 +55,9 @@ class MCPConfig:
 
         config.host = get_value("host", "MCP_HOST", config.host)
         config.port = get_value("port", "MCP_PORT", config.port, int)
+        config.mcp_api_bearer_token = get_value(
+            "mcp_api_bearer_token", "MCP_API_BEARER_TOKEN", config.mcp_api_bearer_token
+        )
         config.api_url = get_value("api_url", "MESHCORE_API_URL", config.api_url)
         config.api_token = get_value("api_token", "MESHCORE_API_TOKEN", config.api_token)
         config.log_level = get_value("log_level", "MESHCORE_LOG_LEVEL", config.log_level)
@@ -69,6 +75,7 @@ class MCPConfig:
             "MCP Server Configuration:",
             f"  Host: {self.host}",
             f"  Port: {self.port}",
+            f"  MCP API Bearer Token: {'configured' if self.mcp_api_bearer_token else 'not configured'}",
             f"  API URL: {self.api_url or '(not configured)'}",
             f"  API Token: {'configured' if self.api_token else 'not configured'}",
             f"  Log Level: {self.log_level}",
