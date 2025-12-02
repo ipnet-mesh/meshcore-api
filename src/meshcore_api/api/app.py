@@ -346,6 +346,40 @@ Data is automatically cleaned up based on the configured retention period (defau
         instrumentator.instrument(app).expose(app, endpoint="/metrics")
         logger.info("Prometheus metrics enabled at /metrics")
 
+    # =========================================================================
+    # Custom OpenAPI Schema with Bearer Auth Security Scheme
+    # =========================================================================
+    if bearer_token:
+        from fastapi.openapi.utils import get_openapi
+
+        def custom_openapi():
+            if app.openapi_schema:
+                return app.openapi_schema
+            openapi_schema = get_openapi(
+                title=app.title,
+                version=app.version,
+                description=app.description,
+                routes=app.routes,
+                tags=app.openapi_tags,
+            )
+            # Add Bearer Auth security scheme
+            openapi_schema["components"] = openapi_schema.get("components", {})
+            openapi_schema["components"]["securitySchemes"] = {
+                "BearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "token",
+                    "description": "Enter your API bearer token",
+                }
+            }
+            # Apply security globally to all endpoints
+            openapi_schema["security"] = [{"BearerAuth": []}]
+            app.openapi_schema = openapi_schema
+            return app.openapi_schema
+
+        app.openapi = custom_openapi
+        logger.info("OpenAPI security scheme configured for Bearer authentication")
+
     logger.info(f"FastAPI application created: {title} v{version}")
 
     return app
