@@ -1,5 +1,16 @@
 # MeshCore API
 
+> [!CAUTION]
+> ## 📦 This Project is Archived
+>
+> **This repository is no longer actively maintained.** All future development has moved to the new unified repository:
+>
+> ### 👉 [**MeshCore Hub**](https://github.com/ipnet-mesh/meshcore-hub)
+>
+> Please use MeshCore Hub for all new projects and contributions. This repository remains available for reference only.
+
+---
+
 MeshCore companion application for event collection, persistence, and REST API access.
 
 ## Features
